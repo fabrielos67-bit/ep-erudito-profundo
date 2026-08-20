@@ -21,9 +21,11 @@ fun HomeScreen(
     onAbrirModulo: (String) -> Unit,
     onAbrirConsultaGlobal: () -> Unit
 ) {
-    val modulos = SourceRegistry.todas.map {
+    val todosLosModulos = SourceRegistry.todas.map {
         Modulo(titulo = it.nombre, subtitulo = "${it.idioma} · ${it.periodo}", ruta = it.id)
     }
+    val investigacionPersonal = todosLosModulos.find { it.ruta == "investigacion_personal" }
+    val modulosPrincipales = todosLosModulos.filterNot { it.ruta == "investigacion_personal" }
 
     Column(
         modifier = Modifier
@@ -52,7 +54,7 @@ fun HomeScreen(
         Spacer(Modifier.height(12.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(modulos) { modulo ->
+            items(modulosPrincipales) { modulo ->
                 TarjetaModulo(
                     titulo = modulo.titulo,
                     subtitulo = modulo.subtitulo,
@@ -65,6 +67,15 @@ fun HomeScreen(
                     subtitulo = "Buscar una referencia en todas las fuentes registradas",
                     onClick = onAbrirConsultaGlobal
                 )
+            }
+            investigacionPersonal?.let { modulo ->
+                item {
+                    TarjetaModulo(
+                        titulo = modulo.titulo,
+                        subtitulo = modulo.subtitulo,
+                        onClick = { onAbrirModulo(modulo.ruta) }
+                    )
+                }
             }
         }
         Spacer(Modifier.height(24.dp))
