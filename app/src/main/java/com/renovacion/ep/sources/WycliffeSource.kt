@@ -1,0 +1,40 @@
+package com.renovacion.ep.sources
+
+import com.renovacion.ep.core.CategoriaFuente
+import com.renovacion.ep.core.Reference
+import com.renovacion.ep.core.TextSource
+import com.renovacion.ep.core.VerseResult
+
+class WycliffeSource : TextSource {
+    override val id = "wycliffe_1382"
+    override val nombre = "John Wycliffe 1382"
+    override val idioma = "Inglés medio"
+    override val periodo = "1382 (primera traducción completa de la Biblia al inglés)"
+    override val categoria = CategoriaFuente.TEXTO_INGLES_HISTORICO
+
+    private val datosDePrueba: Map<String, String> = emptyMap()
+
+    override fun buscar(referencia: Reference): VerseResult {
+        val clave = referencia.display().lowercase()
+        val texto = datosDePrueba[clave]
+        return if (texto != null) {
+            VerseResult(
+                fuenteId = id,
+                fuenteNombre = nombre,
+                referencia = referencia.display(),
+                texto = texto,
+                disponible = true,
+                nota = "Dato de prueba — pendiente de texto crítico definitivo."
+            )
+        } else {
+            VerseResult(
+                fuenteId = id,
+                fuenteNombre = nombre,
+                referencia = referencia.display(),
+                texto = null,
+                disponible = false,
+                nota = "No disponible: agrega tus propias entradas con el botón +."
+            )
+        }
+    }
+}
