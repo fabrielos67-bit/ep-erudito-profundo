@@ -20,6 +20,15 @@ object EntradasStore {
         prefs(context).edit { putStringSet(fuenteId, actualizadas) }
     }
 
+    fun eliminar(context: Context, fuenteId: String, referencia: String) {
+        val actuales = prefs(context).getStringSet(fuenteId, emptySet()) ?: emptySet()
+        val clave = referencia.trim().lowercase()
+        val filtradas = actuales.filterNot {
+            it.split("|||", limit = 2).getOrNull(0)?.trim()?.lowercase() == clave
+        }.toMutableSet()
+        prefs(context).edit { putStringSet(fuenteId, filtradas) }
+    }
+
     fun obtenerTexto(context: Context, fuenteId: String, referencia: String): String? {
         val entradas = prefs(context).getStringSet(fuenteId, emptySet()) ?: emptySet()
         val clave = referencia.trim().lowercase()
