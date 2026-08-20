@@ -31,4 +31,12 @@ object EntradasStore {
         }
         return null
     }
+
+    fun obtenerTodas(context: Context, fuenteId: String): List<Pair<String, String>> {
+        val entradas = prefs(context).getStringSet(fuenteId, emptySet()) ?: emptySet()
+        return entradas.mapNotNull { entrada ->
+            val partes = entrada.split("|||", limit = 2)
+            if (partes.size == 2) partes[0] to partes[1] else null
+        }.sortedBy { it.first.lowercase() }
+    }
 }
