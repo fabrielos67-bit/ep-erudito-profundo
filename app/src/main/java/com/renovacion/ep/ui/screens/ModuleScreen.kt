@@ -1,6 +1,8 @@
 package com.renovacion.ep.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -23,6 +25,17 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
     var resultado by remember { mutableStateOf<VerseResult?>(null) }
     var errorParsing by remember { mutableStateOf(false) }
     var mostrarDialogo by remember { mutableStateOf(false) }
+    var entradasGuardadas by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+
+    fun recargarEntradas() {
+        if (fuente != null) {
+            entradasGuardadas = EntradasStore.obtenerTodas(context, fuente.id)
+        }
+    }
+
+    LaunchedEffect(sourceId) {
+        recargarEntradas()
+    }
 
     fun buscarConEntradas() {
         val referencia = ReferenceParser.parse(consulta)
@@ -115,7 +128,33 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
                 )
             }
 
-            resultado?.let { ResultadoCard(it) }
+            resultado?.let {
+                ResultadoCard(it)
+                Spacer(Modifier.height(20.dp))
+            }
+
+            if (entradasGuardadas.isNotEmpty()) {
+                Text(
+                    "Tus entradas guardadas (${entradasGuardadas.size}):",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(Modifier.height(10.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(entradasGuardadas) { (referenciaGuardada, textoGuardado) ->
+                        ResultadoCard(
+                            VerseResult(
+                                fuenteId = fuente.id,
+                                fuenteNombre = fuente.nombre,
+                                referencia = referenciaGuardada,
+                                texto = textoGuardado,
+                                disponible = true,
+                                nota = "Entrada agregada por ti."
+                            )
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -125,6 +164,7 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
             onGuardar = { referenciaTexto, textoEntrada ->
                 EntradasStore.guardar(context, fuente.id, referenciaTexto, textoEntrada)
                 mostrarDialogo = false
+                recargarEntradas()
                 if (consulta.isNotBlank()) {
                     buscarConEntradas()
                 }
