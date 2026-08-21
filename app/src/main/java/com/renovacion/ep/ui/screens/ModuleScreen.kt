@@ -114,20 +114,8 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { buscarConEntradas() }) {
-                    Text("Buscar")
-                }
-                if (fuente.id == "wessex_1175") {
-                    OutlinedButton(onClick = { consulta = "Mateo 24:36" }) {
-                        Text("Mateo 24:36")
-                    }
-                }
-                if (fuente.id == "wycliffe_1382") {
-                    OutlinedButton(onClick = { consulta = "1 Pedro 1:7" }) {
-                        Text("1 Pedro 1:7")
-                    }
-                }
+            Button(onClick = { buscarConEntradas() }) {
+                Text("Buscar")
             }
 
             Spacer(Modifier.height(20.dp))
