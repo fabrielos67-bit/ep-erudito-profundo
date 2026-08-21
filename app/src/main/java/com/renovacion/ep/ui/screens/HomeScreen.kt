@@ -64,7 +64,7 @@ fun HomeScreen(
             item {
                 TarjetaModulo(
                     titulo = "Consulta Global",
-                    subtitulo = "Buscar una referencia en todas las fuentes registradas",
+                    subtitulo = "Bible Gateway",
                     onClick = onAbrirConsultaGlobal
                 )
             }
