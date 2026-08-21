@@ -7,9 +7,12 @@ import com.renovacion.ep.core.VerseResult
 
 class InvestigacionPersonalSource : TextSource {
     override val id = "investigacion_personal"
-    override val nombre = "Investigación Personal"
-    override val idioma = "Interpretación Privada"
-    override val periodo = "Notas personales — en construcción"
+    class InvestigacionPersonalSource : TextSource {
+    override val id = "investigacion_personal"
+    override val nombre = "INTERPRETACIÓN PRIVADA."
+    override val idioma = "El otro Evangelio • Investigación Personal (Eliminando la Malicia) PORNBIBLE"
+    override val periodo = ""
+    override val categoria = CategoriaFuente.FUENTE_EXTERNA
     override val categoria = CategoriaFuente.FUENTE_EXTERNA
 
     private val datosDePrueba: Map<String, String> = emptyMap()
