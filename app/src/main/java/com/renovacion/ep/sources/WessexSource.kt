@@ -16,6 +16,9 @@ class WessexSource : TextSource {
         "mateo 24:36" to "Be þam dæge soðlice & be þære tide nat nan man [texto de prueba]"
     )
 
+    override fun entradasBase(): List<Pair<String, String>> =
+        listOf("Mateo 24:36" to (datosDePrueba["mateo 24:36"] ?: ""))
+
     override fun buscar(referencia: Reference): VerseResult {
         val clave = referencia.display().lowercase()
         val texto = datosDePrueba[clave]
