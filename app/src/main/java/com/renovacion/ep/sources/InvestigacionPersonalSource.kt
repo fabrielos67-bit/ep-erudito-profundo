@@ -9,7 +9,7 @@ class InvestigacionPersonalSource : TextSource {
     override val id = "investigacion_personal"
     override val nombre = "Interpretación Privada"
     override val idioma = "El otro Evangelio"
-    override val periodo = "Investigación Personal (Eliminando la Malicia)"
+    override val periodo = "Investigación Personal (Eliminando Malicia) PornBible"
     override val categoria = CategoriaFuente.FUENTE_EXTERNA
 
     private val datosDePrueba: Map<String, String> = emptyMap()
