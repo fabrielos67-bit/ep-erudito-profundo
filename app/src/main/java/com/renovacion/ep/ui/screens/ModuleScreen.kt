@@ -30,7 +30,13 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
 
     fun recargarEntradas() {
         if (fuente != null) {
-            entradasGuardadas = EntradasStore.obtenerTodas(context, fuente.id)
+            val propias = EntradasStore.obtenerTodas(context, fuente.id)
+            val clavesPropias = propias.map { it.first.trim().lowercase() }.toSet()
+            val base = fuente.entradasBase().filter { (referencia, _) ->
+                val clave = referencia.trim().lowercase()
+                clave !in clavesPropias && !EntradasStore.estaOculta(context, fuente.id, referencia)
+            }
+            entradasGuardadas = (base + propias).sortedBy { it.first.lowercase() }
         }
     }
 
@@ -116,6 +122,8 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
                     OutlinedButton(onClick = { consulta = "Mateo 24:36" }) {
                         Text("Mateo 24:36")
                     }
+                }
+                if (fuente.id == "wycliffe_1382") {
                     OutlinedButton(onClick = { consulta = "1 Pedro 1:7" }) {
                         Text("1 Pedro 1:7")
                     }
@@ -138,7 +146,7 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
 
             if (entradasGuardadas.isNotEmpty()) {
                 Text(
-                    "Tus entradas guardadas (${entradasGuardadas.size}) — toca una para editarla:",
+                    "Entradas guardadas (${entradasGuardadas.size}) — toca una para editarla:",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
