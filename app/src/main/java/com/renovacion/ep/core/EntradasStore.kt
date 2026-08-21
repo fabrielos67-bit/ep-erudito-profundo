@@ -5,6 +5,7 @@ import androidx.core.content.edit
 
 object EntradasStore {
     private const val PREFS_NAME = "ep_entradas"
+    private const val SUFIJO_OCULTAS = "_ocultas"
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -18,6 +19,7 @@ object EntradasStore {
         val nuevaEntrada = "${referencia.trim()}|||${texto.trim()}"
         val actualizadas = (sinDuplicado + nuevaEntrada).toMutableSet()
         prefs(context).edit { putStringSet(fuenteId, actualizadas) }
+        mostrar(context, fuenteId, referencia)
     }
 
     fun eliminar(context: Context, fuenteId: String, referencia: String) {
@@ -27,6 +29,27 @@ object EntradasStore {
             it.split("|||", limit = 2).getOrNull(0)?.trim()?.lowercase() == clave
         }.toMutableSet()
         prefs(context).edit { putStringSet(fuenteId, filtradas) }
+        ocultar(context, fuenteId, referencia)
+    }
+
+    fun ocultar(context: Context, fuenteId: String, referencia: String) {
+        val clave = fuenteId + SUFIJO_OCULTAS
+        val actuales = prefs(context).getStringSet(clave, emptySet()) ?: emptySet()
+        val nuevas = (actuales + referencia.trim().lowercase()).toMutableSet()
+        prefs(context).edit { putStringSet(clave, nuevas) }
+    }
+
+    fun mostrar(context: Context, fuenteId: String, referencia: String) {
+        val clave = fuenteId + SUFIJO_OCULTAS
+        val actuales = prefs(context).getStringSet(clave, emptySet()) ?: emptySet()
+        val nuevas = actuales.filterNot { it == referencia.trim().lowercase() }.toMutableSet()
+        prefs(context).edit { putStringSet(clave, nuevas) }
+    }
+
+    fun estaOculta(context: Context, fuenteId: String, referencia: String): Boolean {
+        val clave = fuenteId + SUFIJO_OCULTAS
+        val ocultas = prefs(context).getStringSet(clave, emptySet()) ?: emptySet()
+        return ocultas.contains(referencia.trim().lowercase())
     }
 
     fun obtenerTexto(context: Context, fuenteId: String, referencia: String): String? {
