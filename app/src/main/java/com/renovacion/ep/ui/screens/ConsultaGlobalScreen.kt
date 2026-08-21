@@ -97,22 +97,8 @@ fun ConsultaGlobalScreen(onVolver: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { ejecutarBusqueda() }) {
-                    Text("Buscar")
-                }
-                OutlinedButton(onClick = {
-                    consulta = "Mateo 24:36"
-                    ejecutarBusqueda()
-                }) {
-                    Text("Mateo 24:36")
-                }
-                OutlinedButton(onClick = {
-                    consulta = "1 Pedro 1:7"
-                    ejecutarBusqueda()
-                }) {
-                    Text("1 Pedro 1:7")
-                }
+            Button(onClick = { ejecutarBusqueda() }) {
+                Text("Buscar")
             }
 
             Spacer(Modifier.height(20.dp))
