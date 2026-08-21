@@ -12,7 +12,12 @@ class WycliffeSource : TextSource {
     override val periodo = "1382 (primera traducción completa de la Biblia al inglés)"
     override val categoria = CategoriaFuente.TEXTO_INGLES_HISTORICO
 
-    private val datosDePrueba: Map<String, String> = emptyMap()
+    private val datosDePrueba: Map<String, String> = mapOf(
+        "1 pedro 1:7" to "That the preuyng of youre feith myche more precious than gold is preued bi fier [texto de prueba]"
+    )
+
+    override fun entradasBase(): List<Pair<String, String>> =
+        listOf("1 Pedro 1:7" to (datosDePrueba["1 pedro 1:7"] ?: ""))
 
     override fun buscar(referencia: Reference): VerseResult {
         val clave = referencia.display().lowercase()
