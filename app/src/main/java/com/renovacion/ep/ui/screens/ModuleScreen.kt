@@ -26,6 +26,7 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
     var errorParsing by remember { mutableStateOf(false) }
     var mostrarDialogo by remember { mutableStateOf(false) }
     var entradasGuardadas by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    var entradaEditando by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     fun recargarEntradas() {
         if (fuente != null) {
@@ -135,22 +136,17 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
 
             if (entradasGuardadas.isNotEmpty()) {
                 Text(
-                    "Tus entradas guardadas (${entradasGuardadas.size}):",
+                    "Tus entradas guardadas (${entradasGuardadas.size}) — toca una para editarla:",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(entradasGuardadas) { (referenciaGuardada, textoGuardado) ->
-                        ResultadoCard(
-                            VerseResult(
-                                fuenteId = fuente.id,
-                                fuenteNombre = fuente.nombre,
-                                referencia = referenciaGuardada,
-                                texto = textoGuardado,
-                                disponible = true,
-                                nota = "Entrada agregada por ti."
-                            )
+                    items(entradasGuardadas) { entrada ->
+                        EntradaGuardadaCard(
+                            referencia = entrada.first,
+                            texto = entrada.second,
+                            onClick = { entradaEditando = entrada }
                         )
                     }
                 }
@@ -159,7 +155,10 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
     }
 
     if (mostrarDialogo && fuente != null) {
-        DialogoNuevaEntrada(
+        DialogoEntrada(
+            referenciaInicial = "",
+            textoInicial = "",
+            permiteEliminar = false,
             onCancelar = { mostrarDialogo = false },
             onGuardar = { referenciaTexto, textoEntrada ->
                 EntradasStore.guardar(context, fuente.id, referenciaTexto, textoEntrada)
@@ -168,22 +167,54 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
                 if (consulta.isNotBlank()) {
                     buscarConEntradas()
                 }
-            }
+            },
+            onEliminar = {}
         )
+    }
+
+    entradaEditando?.let { (referenciaActual, textoActual) ->
+        if (fuente != null) {
+            DialogoEntrada(
+                referenciaInicial = referenciaActual,
+                textoInicial = textoActual,
+                permiteEliminar = true,
+                onCancelar = { entradaEditando = null },
+                onGuardar = { referenciaTexto, textoEntrada ->
+                    EntradasStore.guardar(context, fuente.id, referenciaTexto, textoEntrada)
+                    entradaEditando = null
+                    recargarEntradas()
+                    if (consulta.isNotBlank()) {
+                        buscarConEntradas()
+                    }
+                },
+                onEliminar = {
+                    EntradasStore.eliminar(context, fuente.id, referenciaActual)
+                    entradaEditando = null
+                    recargarEntradas()
+                    if (consulta.isNotBlank()) {
+                        buscarConEntradas()
+                    }
+                }
+            )
+        }
     }
 }
 
 @Composable
-fun DialogoNuevaEntrada(
+fun DialogoEntrada(
+    referenciaInicial: String,
+    textoInicial: String,
+    permiteEliminar: Boolean,
     onCancelar: () -> Unit,
-    onGuardar: (String, String) -> Unit
+    onGuardar: (String, String) -> Unit,
+    onEliminar: () -> Unit
 ) {
-    var referenciaTexto by remember { mutableStateOf("") }
-    var textoEntrada by remember { mutableStateOf("") }
+    var referenciaTexto by remember { mutableStateOf(referenciaInicial) }
+    var textoEntrada by remember { mutableStateOf(textoInicial) }
 
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text("Nueva entrada") },
+        title = { Text(if (permiteEliminar) "Editar entrada" else "Nueva entrada") },
         text = {
             Column {
                 OutlinedTextField(
@@ -199,6 +230,12 @@ fun DialogoNuevaEntrada(
                     label = { Text("Texto") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (permiteEliminar) {
+                    Spacer(Modifier.height(10.dp))
+                    TextButton(onClick = onEliminar) {
+                        Text("Eliminar esta entrada", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         },
         confirmButton = {
@@ -218,6 +255,27 @@ fun DialogoNuevaEntrada(
             }
         }
     )
+}
+
+@Composable
+fun EntradaGuardadaCard(referencia: String, texto: String, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = referencia,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(texto, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Toca para editar o eliminar",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable
