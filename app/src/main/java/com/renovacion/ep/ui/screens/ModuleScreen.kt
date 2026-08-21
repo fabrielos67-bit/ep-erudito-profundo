@@ -112,11 +112,13 @@ fun ModuleScreen(sourceId: String, onVolver: () -> Unit) {
                 Button(onClick = { buscarConEntradas() }) {
                     Text("Buscar")
                 }
-                OutlinedButton(onClick = { consulta = "Mateo 24:36" }) {
-                    Text("Mateo 24:36")
-                }
-                OutlinedButton(onClick = { consulta = "1 Pedro 1:7" }) {
-                    Text("1 Pedro 1:7")
+                if (fuente.id == "wessex_1175") {
+                    OutlinedButton(onClick = { consulta = "Mateo 24:36" }) {
+                        Text("Mateo 24:36")
+                    }
+                    OutlinedButton(onClick = { consulta = "1 Pedro 1:7" }) {
+                        Text("1 Pedro 1:7")
+                    }
                 }
             }
 
