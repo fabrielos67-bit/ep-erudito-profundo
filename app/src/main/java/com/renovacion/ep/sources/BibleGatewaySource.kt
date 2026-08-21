@@ -8,8 +8,8 @@ import com.renovacion.ep.core.VerseResult
 class BibleGatewaySource : TextSource {
     override val id = "bible_gateway"
     override val nombre = "Bible Gateway (English Translations)"
-    override val idioma = "Inglés"
-    override val periodo = "Traducciones modernas en línea (Bible Gateway)"
+override val idioma = "Inglés traducciones modernas en línea."
+override val periodo = ""
     override val categoria = CategoriaFuente.FUENTE_EXTERNA
 
     private val datosDePrueba: Map<String, String> = emptyMap()
