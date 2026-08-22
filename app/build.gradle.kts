@@ -17,7 +17,7 @@ android {
 
     signingConfigs {
         create("fixedDebug") {
-            storeFile = file("../ep-debug.keystore")
+            storeFile = file("../ep-debug.keystore.txt")
             storePassword = "eperudito123"
             keyAlias = "epkey"
             keyPassword = "eperudito123"
