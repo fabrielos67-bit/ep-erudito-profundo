@@ -1,20 +1,33 @@
 package com.renovacion.ep.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.renovacion.ep.core.SourceRegistry
 
 private data class Modulo(
     val titulo: String,
     val subtitulo: String,
-    val ruta: String
+    val ruta: String,
+    val enlace: String? = null
 )
+
+private val enlacesPorFuente = mapOf(
+    "masoretico_1524" to "https://www.textusreceptusbibles.com/Masoretic",
+    "wessex_1175" to "https://www.textusreceptusbibles.com/Wessex",
+    "wycliffe_1382" to "https://www.textusreceptusbibles.com/Wycliffe",
+    "investigacion_personal" to "https://logosklogos.com/"
+)
+
+private const val ENLACE_CONSULTA_GLOBAL = "https://www.biblegateway.com/"
 
 @Composable
 fun HomeScreen(
@@ -22,7 +35,12 @@ fun HomeScreen(
     onAbrirConsultaGlobal: () -> Unit
 ) {
     val todosLosModulos = SourceRegistry.todas.map {
-        Modulo(titulo = it.nombre, subtitulo = "${it.idioma} · ${it.periodo}", ruta = it.id)
+        Modulo(
+            titulo = it.nombre,
+            subtitulo = "${it.idioma} · ${it.periodo}",
+            ruta = it.id,
+            enlace = enlacesPorFuente[it.id]
+        )
     }
     val investigacionPersonal = todosLosModulos.find { it.ruta == "investigacion_personal" }
     val modulosPrincipales = todosLosModulos.filterNot { it.ruta == "investigacion_personal" }
@@ -58,6 +76,7 @@ fun HomeScreen(
                 TarjetaModulo(
                     titulo = modulo.titulo,
                     subtitulo = modulo.subtitulo,
+                    enlace = modulo.enlace,
                     onClick = { onAbrirModulo(modulo.ruta) }
                 )
             }
@@ -65,6 +84,7 @@ fun HomeScreen(
                 TarjetaModulo(
                     titulo = "Consulta Global",
                     subtitulo = "Bible Gateway (English Translations) — Inglés, traducciones modernas en línea.",
+                    enlace = ENLACE_CONSULTA_GLOBAL,
                     onClick = onAbrirConsultaGlobal
                 )
             }
@@ -73,6 +93,7 @@ fun HomeScreen(
                     TarjetaModulo(
                         titulo = modulo.titulo,
                         subtitulo = modulo.subtitulo,
+                        enlace = modulo.enlace,
                         onClick = { onAbrirModulo(modulo.ruta) }
                     )
                 }
@@ -83,7 +104,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TarjetaModulo(titulo: String, subtitulo: String, onClick: () -> Unit) {
+private fun TarjetaModulo(
+    titulo: String,
+    subtitulo: String,
+    enlace: String?,
+    onClick: () -> Unit
+) {
+    val uriHandler = LocalUriHandler.current
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -102,11 +129,21 @@ private fun TarjetaModulo(titulo: String, subtitulo: String, onClick: () -> Unit
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(4.dp))
-            Text(
-                text = subtitulo,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (enlace != null) {
+                Text(
+                    text = subtitulo,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable { uriHandler.openUri(enlace) }
+                )
+            } else {
+                Text(
+                    text = subtitulo,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
