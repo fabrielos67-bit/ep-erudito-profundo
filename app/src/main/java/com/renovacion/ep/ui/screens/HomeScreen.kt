@@ -28,12 +28,14 @@ private val enlacesPorFuente = mapOf(
 )
 
 private const val ENLACE_CONSULTA_GLOBAL = "https://www.biblegateway.com/"
+private const val ENLACE_GOOGLE_TRADUCTOR = "https://translate.google.com/"
 
 @Composable
 fun HomeScreen(
     onAbrirModulo: (String) -> Unit,
     onAbrirConsultaGlobal: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
     val todosLosModulos = SourceRegistry.todas.map {
         Modulo(
             titulo = it.nombre,
@@ -97,6 +99,14 @@ fun HomeScreen(
                         onClick = { onAbrirModulo(modulo.ruta) }
                     )
                 }
+            }
+            item {
+                TarjetaModulo(
+                    titulo = "Google Traductor",
+                    subtitulo = "Consultar o traducir palabras y textos",
+                    enlace = null,
+                    onClick = { uriHandler.openUri(ENLACE_GOOGLE_TRADUCTOR) }
+                )
             }
         }
         Spacer(Modifier.height(24.dp))
