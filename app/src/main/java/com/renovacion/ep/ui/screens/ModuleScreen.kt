@@ -259,6 +259,7 @@ private fun PantallaEdicionEntrada(
                 .padding(padding)
                 .padding(20.dp)
                 .fillMaxSize()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
         ) {
             OutlinedTextField(
@@ -275,6 +276,7 @@ private fun PantallaEdicionEntrada(
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 10
             )
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
