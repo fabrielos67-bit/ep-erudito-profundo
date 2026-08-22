@@ -2,13 +2,15 @@ package com.renovacion.ep.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +21,7 @@ import com.renovacion.ep.core.EntradasStore
 import com.renovacion.ep.core.ReferenceParser
 import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.VerseResult
+import kotlinx.coroutines.launch
 
 private data class ModoEdicion(
     val referenciaInicial: String,
@@ -227,6 +230,9 @@ private fun PantallaEdicionEntrada(
 ) {
     var referenciaTexto by remember { mutableStateOf(referenciaInicial) }
     var textoEntrada by remember { mutableStateOf(textoInicial) }
+    var menuAbierto by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val textoBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     Scaffold(
         topBar = {
@@ -238,17 +244,34 @@ private fun PantallaEdicionEntrada(
                     }
                 },
                 actions = {
-                    if (permiteEliminar) {
-                        IconButton(onClick = onEliminar) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
-                        }
-                    }
                     IconButton(onClick = {
                         if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
                             onGuardar(referenciaTexto, textoEntrada)
                         }
                     }) {
                         Icon(Icons.Filled.Check, contentDescription = "Guardar")
+                    }
+                    IconButton(onClick = { menuAbierto = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones")
+                    }
+                    DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Deshacer cambios") },
+                            onClick = {
+                                referenciaTexto = referenciaInicial
+                                textoEntrada = textoInicial
+                                menuAbierto = false
+                            }
+                        )
+                        if (permiteEliminar) {
+                            DropdownMenuItem(
+                                text = { Text("Eliminar") },
+                                onClick = {
+                                    menuAbierto = false
+                                    onEliminar()
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -271,9 +294,14 @@ private fun PantallaEdicionEntrada(
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
                 value = textoEntrada,
-                onValueChange = { textoEntrada = it },
+                onValueChange = {
+                    textoEntrada = it
+                    scope.launch { textoBringIntoViewRequester.bringIntoView() }
+                },
                 label = { Text("Texto") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewRequester(textoBringIntoViewRequester),
                 minLines = 10
             )
             Spacer(Modifier.height(24.dp))
