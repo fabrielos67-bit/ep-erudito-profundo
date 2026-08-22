@@ -15,7 +15,19 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        create("fixedDebug") {
+            storeFile = file("../ep-debug.keystore")
+            storePassword = "eperudito123"
+            keyAlias = "epkey"
+            keyPassword = "eperudito123"
+        }
+    }
+
     buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("fixedDebug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
