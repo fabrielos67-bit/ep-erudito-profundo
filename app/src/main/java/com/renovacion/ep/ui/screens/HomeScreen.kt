@@ -20,6 +20,12 @@ private data class Modulo(
     val enlace: String? = null
 )
 
+private data class RecursoExterno(
+    val titulo: String,
+    val subtitulo: String,
+    val enlace: String
+)
+
 private val enlacesPorFuente = mapOf(
     "masoretico_1524" to "https://www.textusreceptusbibles.com/Masoretic",
     "wessex_1175" to "https://www.textusreceptusbibles.com/Wessex",
@@ -28,7 +34,29 @@ private val enlacesPorFuente = mapOf(
 )
 
 private const val ENLACE_CONSULTA_GLOBAL = "https://www.biblegateway.com/"
-private const val ENLACE_GOOGLE_TRADUCTOR = "https://translate.google.com/"
+
+private val recursosExternos = listOf(
+    RecursoExterno(
+        titulo = "Google Traductor",
+        subtitulo = "Consultar o traducir palabras y textos",
+        enlace = "https://translate.google.com/"
+    ),
+    RecursoExterno(
+        titulo = "Biblia Paralela",
+        subtitulo = "Comparar versiones lado a lado",
+        enlace = "https://bibliaparalela.com/"
+    ),
+    RecursoExterno(
+        titulo = "Diccionario Bíblico",
+        subtitulo = "Consultar términos y definiciones",
+        enlace = "https://www.google.com/amp/s/www.bibliatodo.com/amp/Diccionario-biblico"
+    ),
+    RecursoExterno(
+        titulo = "Concordancia Bíblica",
+        subtitulo = "Buscar palabras y sus apariciones",
+        enlace = "https://www.bibliatodo.com/concordancia-biblica"
+    )
+)
 
 @Composable
 fun HomeScreen(
@@ -100,12 +128,12 @@ fun HomeScreen(
                     )
                 }
             }
-            item {
+            items(recursosExternos) { recurso ->
                 TarjetaModulo(
-                    titulo = "Google Traductor",
-                    subtitulo = "Consultar o traducir palabras y textos",
+                    titulo = recurso.titulo,
+                    subtitulo = recurso.subtitulo,
                     enlace = null,
-                    onClick = { uriHandler.openUri(ENLACE_GOOGLE_TRADUCTOR) }
+                    onClick = { uriHandler.openUri(recurso.enlace) }
                 )
             }
         }
