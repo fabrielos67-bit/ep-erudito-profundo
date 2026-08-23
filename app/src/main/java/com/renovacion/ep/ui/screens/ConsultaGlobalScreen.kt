@@ -1,11 +1,12 @@
 package com.renovacion.ep.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,19 +18,44 @@ import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.TextSource
 import com.renovacion.ep.core.VerseResult
 
+private data class ModoEdicionGlobal(
+    val fuenteId: String,
+    val referenciaInicial: String,
+    val textoInicial: String,
+    val esNueva: Boolean
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConsultaGlobalScreen(onVolver: () -> Unit) {
+fun ConsultaGlobalScreen(
+    onVolver: () -> Unit
+) {
     val context = LocalContext.current
+
     var consulta by remember { mutableStateOf("") }
-    var resultados by remember { mutableStateOf<List<VerseResult>>(emptyList()) }
+    var resultados by remember {
+        mutableStateOf<List<VerseResult>>(emptyList())
+    }
     var errorParsing by remember { mutableStateOf(false) }
     var buscado by remember { mutableStateOf(false) }
-    var mostrarDialogo by remember { mutableStateOf(false) }
 
-    fun buscarEnFuente(fuente: TextSource, referencia: com.renovacion.ep.core.Reference): VerseResult {
-        val textoGuardado = EntradasStore.obtenerTexto(context, fuente.id, referencia.display())
+    var modoEdicion by remember {
+        mutableStateOf<ModoEdicionGlobal?>(null)
+    }
+
+    fun buscarEnFuente(
+        fuente: TextSource,
+        referencia: com.renovacion.ep.core.Reference
+    ): VerseResult {
+
+        val textoGuardado = EntradasStore.obtenerTexto(
+            context,
+            fuente.id,
+            referencia.display()
+        )
+
         return if (textoGuardado != null) {
+
             VerseResult(
                 fuenteId = fuente.id,
                 fuenteNombre = fuente.nombre,
@@ -38,165 +64,585 @@ fun ConsultaGlobalScreen(onVolver: () -> Unit) {
                 disponible = true,
                 nota = "Entrada agregada por ti."
             )
+
         } else {
+
             fuente.buscar(referencia)
         }
     }
 
     fun ejecutarBusqueda() {
+
         val referencia = ReferenceParser.parse(consulta)
+
         if (referencia == null) {
+
             errorParsing = true
             resultados = emptyList()
             buscado = false
+
         } else {
+
             errorParsing = false
-            resultados = SourceRegistry.todas.map { buscarEnFuente(it, referencia) }
+
+            resultados = SourceRegistry.todas
+                .map {
+                    buscarEnFuente(it, referencia)
+                }
+                .filter {
+                    it.disponible
+                }
+
             buscado = true
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Consulta Global") },
-                navigationIcon = {
-                    IconButton(onClick = onVolver) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { mostrarDialogo = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Agregar entrada")
-            }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(20.dp)
-                .fillMaxSize()
-        ) {
-            Text(
-                "Busca una referencia bíblica en todas las fuentes registradas.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(16.dp))
+    val edicionActual = modoEdicion
 
-            OutlinedTextField(
-                value = consulta,
-                onValueChange = {
-                    consulta = it
-                    errorParsing = false
-                },
-                label = { Text("Referencia (p. ej. Mateo 24:36)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(10.dp))
+    if (edicionActual != null) {
 
-            Button(onClick = { ejecutarBusqueda() }) {
-                Text("Buscar")
-            }
+        PantallaEdicionGlobal(
+            fuenteInicial = edicionActual.fuenteId,
+            referenciaInicial = edicionActual.referenciaInicial,
+            textoInicial = edicionActual.textoInicial,
+            permiteEliminar = !edicionActual.esNueva,
 
-            Spacer(Modifier.height(20.dp))
+            onVolver = {
+                modoEdicion = null
+            },
 
-            if (errorParsing) {
-                Text(
-                    "No se pudo interpretar la referencia. Usa el formato \"Libro capítulo:verso\".",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
-            if (buscado) {
-                Text(
-                    "Resultados en ${resultados.size} fuente(s):",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(Modifier.height(10.dp))
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(resultados) { resultado ->
-                        ResultadoCard(resultado)
-                    }
-                }
-            }
-        }
-    }
-
-    if (mostrarDialogo) {
-        DialogoNuevaEntradaConFuente(
-            onCancelar = { mostrarDialogo = false },
             onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
-                EntradasStore.guardar(context, fuenteId, referenciaTexto, textoEntrada)
-                mostrarDialogo = false
+
+                EntradasStore.guardar(
+                    context,
+                    fuenteId,
+                    referenciaTexto,
+                    textoEntrada
+                )
+
+                modoEdicion = null
+
+                if (consulta.isNotBlank()) {
+                    ejecutarBusqueda()
+                }
+            },
+
+            onEliminar = {
+
+                EntradasStore.eliminar(
+                    context,
+                    edicionActual.fuenteId,
+                    edicionActual.referenciaInicial
+                )
+
+                modoEdicion = null
+
                 if (consulta.isNotBlank()) {
                     ejecutarBusqueda()
                 }
             }
         )
+
+        return
+    }
+
+    Scaffold(
+
+        topBar = {
+
+            TopAppBar(
+
+                title = {
+                    Text("Consulta Global")
+                },
+
+                navigationIcon = {
+
+                    IconButton(
+                        onClick = onVolver
+                    ) {
+
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                }
+            )
+        }
+
+    ) { padding ->
+
+        Column(
+
+            modifier = Modifier
+                .padding(padding)
+                .padding(20.dp)
+                .fillMaxSize()
+                .verticalScroll(
+                    rememberScrollState()
+                )
+        ) {
+
+            Text(
+                text = "Busca una referencia bíblica en todas las fuentes registradas.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(
+                modifier = Modifier.height(16.dp)
+            )
+
+            OutlinedTextField(
+
+                value = consulta,
+
+                onValueChange = {
+                    consulta = it
+                    errorParsing = false
+                },
+
+                label = {
+                    Text("Referencia (p. ej. Mateo 24:36)")
+                },
+
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(
+                modifier = Modifier.height(10.dp)
+            )
+
+            Button(
+                onClick = {
+                    ejecutarBusqueda()
+                }
+            ) {
+                Text("Buscar")
+            }
+
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
+
+            if (errorParsing) {
+
+                Text(
+                    text = "No se pudo interpretar la referencia. Usa el formato \"Libro capítulo:verso\".",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            if (buscado) {
+
+                Text(
+                    text = "Resultados en ${resultados.size} fuente(s):",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Spacer(
+                    modifier = Modifier.height(10.dp)
+                )
+
+                resultados.forEach { resultado ->
+
+                    ResultadoCardGlobal(
+                        resultado = resultado,
+                        onEditar = {
+
+                            modoEdicion = ModoEdicionGlobal(
+                                fuenteId = resultado.fuenteId,
+                                referenciaInicial = resultado.referencia,
+                                textoInicial = resultado.texto ?: "",
+                                esNueva = false
+                            )
+                        }
+                    )
+
+                    Spacer(
+                        modifier = Modifier.height(12.dp)
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.height(80.dp)
+            )
+        }
+    }
+
+    FloatingActionButton(
+        onClick = {
+
+            val fuenteInicial =
+                SourceRegistry.todas.firstOrNull()
+
+            if (fuenteInicial != null) {
+
+                modoEdicion = ModoEdicionGlobal(
+                    fuenteId = fuenteInicial.id,
+                    referenciaInicial = consulta,
+                    textoInicial = "",
+                    esNueva = true
+                )
+            }
+        },
+
+        modifier = Modifier
+            .padding(16.dp)
+    ) {
+        Icon(
+            Icons.Filled.Check,
+            contentDescription = "Nueva entrada"
+        )
     }
 }
 
 @Composable
-fun DialogoNuevaEntradaConFuente(
-    onCancelar: () -> Unit,
-    onGuardar: (String, String, String) -> Unit
+private fun ResultadoCardGlobal(
+    resultado: VerseResult,
+    onEditar: () -> Unit
 ) {
-    var fuenteSeleccionada by remember { mutableStateOf(SourceRegistry.todas.firstOrNull()) }
-    var referenciaTexto by remember { mutableStateOf("") }
-    var textoEntrada by remember { mutableStateOf("") }
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
 
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        title = { Text("Nueva entrada") },
-        text = {
-            Column {
-                Text("Fuente:", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SourceRegistry.todas.forEach { fuente ->
-                        FilterChip(
-                            selected = fuenteSeleccionada?.id == fuente.id,
-                            onClick = { fuenteSeleccionada = fuente },
-                            label = { Text(fuente.nombre) }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = referenciaTexto,
-                    onValueChange = { referenciaTexto = it },
-                    label = { Text("Referencia (p. ej. Mateo 24:36)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = textoEntrada,
-                    onValueChange = { textoEntrada = it },
-                    label = { Text("Texto") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val fuente = fuenteSeleccionada
-                    if (fuente != null && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
-                        onGuardar(fuente.id, referenciaTexto, textoEntrada)
-                    }
-                }
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Text(
+                text = resultado.fuenteNombre,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
+
+            Text(
+                text = resultado.referencia,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(
+                modifier = Modifier.height(8.dp)
+            )
+
+            if (
+                resultado.disponible &&
+                resultado.texto != null
             ) {
-                Text("Guardar")
+
+                Text(
+                    text = resultado.texto,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
+                TextButton(
+                    onClick = onEditar
+                ) {
+                    Text("Editar")
+                }
+
+            } else {
+
+                Text(
+                    text = "No disponible.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) {
-                Text("Cancelar")
+
+            resultado.nota?.let {
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
-    )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PantallaEdicionGlobal(
+    fuenteInicial: String,
+    referenciaInicial: String,
+    textoInicial: String,
+    permiteEliminar: Boolean,
+    onVolver: () -> Unit,
+    onGuardar: (String, String, String) -> Unit,
+    onEliminar: () -> Unit
+) {
+
+    var fuenteId by remember {
+        mutableStateOf(fuenteInicial)
+    }
+
+    var referenciaTexto by remember {
+        mutableStateOf(referenciaInicial)
+    }
+
+    var textoEntrada by remember {
+        mutableStateOf(textoInicial)
+    }
+
+    var menuAbierto by remember {
+        mutableStateOf(false)
+    }
+
+    var fuenteMenuAbierto by remember {
+        mutableStateOf(false)
+    }
+
+    val fuenteSeleccionada =
+        SourceRegistry.todas.firstOrNull {
+            it.id == fuenteId
+        }
+
+    Scaffold(
+
+        topBar = {
+
+            TopAppBar(
+
+                title = {
+                    Text(
+                        if (permiteEliminar)
+                            "Editar entrada"
+                        else
+                            "Nueva entrada"
+                    )
+                },
+
+                navigationIcon = {
+
+                    IconButton(
+                        onClick = onVolver
+                    ) {
+
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+
+                actions = {
+
+                    IconButton(
+
+                        onClick = {
+
+                            if (
+                                referenciaTexto.isNotBlank() &&
+                                textoEntrada.isNotBlank()
+                            ) {
+
+                                onGuardar(
+                                    fuenteId,
+                                    referenciaTexto,
+                                    textoEntrada
+                                )
+                            }
+                        }
+
+                    ) {
+
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = "Guardar"
+                        )
+                    }
+
+                    IconButton(
+
+                        onClick = {
+                            menuAbierto = true
+                        }
+
+                    ) {
+
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "Más opciones"
+                        )
+                    }
+
+                    DropdownMenu(
+
+                        expanded = menuAbierto,
+
+                        onDismissRequest = {
+                            menuAbierto = false
+                        }
+
+                    ) {
+
+                        DropdownMenuItem(
+
+                            text = {
+                                Text("Deshacer cambios")
+                            },
+
+                            onClick = {
+
+                                referenciaTexto =
+                                    referenciaInicial
+
+                                textoEntrada =
+                                    textoInicial
+
+                                fuenteId =
+                                    fuenteInicial
+
+                                menuAbierto = false
+                            }
+                        )
+
+                        if (permiteEliminar) {
+
+                            DropdownMenuItem(
+
+                                text = {
+                                    Text("Eliminar")
+                                },
+
+                                onClick = {
+
+                                    menuAbierto = false
+                                    onEliminar()
+                                }
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+    ) { padding ->
+
+        Column(
+
+            modifier = Modifier
+                .padding(padding)
+                .padding(20.dp)
+                .fillMaxSize()
+                .imePadding()
+                .verticalScroll(
+                    rememberScrollState()
+                )
+        ) {
+
+            Text(
+                text = "Fuente",
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Spacer(
+                modifier = Modifier.height(6.dp)
+            )
+
+            OutlinedButton(
+
+                onClick = {
+                    fuenteMenuAbierto = true
+                },
+
+                modifier = Modifier.fillMaxWidth()
+            ) {
+
+                Text(
+                    fuenteSeleccionada?.nombre
+                        ?: "Seleccionar fuente"
+                )
+            }
+
+            DropdownMenu(
+
+                expanded = fuenteMenuAbierto,
+
+                onDismissRequest = {
+                    fuenteMenuAbierto = false
+                }
+
+            ) {
+
+                SourceRegistry.todas.forEach { fuente ->
+
+                    DropdownMenuItem(
+
+                        text = {
+                            Text(fuente.nombre)
+                        },
+
+                        onClick = {
+
+                            fuenteId = fuente.id
+                            fuenteMenuAbierto = false
+                        }
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.height(16.dp)
+            )
+
+            OutlinedTextField(
+
+                value = referenciaTexto,
+
+                onValueChange = {
+                    referenciaTexto = it
+                },
+
+                label = {
+                    Text("Referencia (p. ej. Mateo 24:36)")
+                },
+
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(
+                modifier = Modifier.height(16.dp)
+            )
+
+            OutlinedTextField(
+
+                value = textoEntrada,
+
+                onValueChange = {
+                    textoEntrada = it
+                },
+
+                label = {
+                    Text("Texto")
+                },
+
+                modifier = Modifier.fillMaxWidth(),
+
+                minLines = 10
+            )
+
+            Spacer(
+                modifier = Modifier.height(24.dp)
+            )
+        }
+    }
 }
