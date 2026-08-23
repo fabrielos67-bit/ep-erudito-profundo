@@ -1,5 +1,3 @@
-package com.renovacion.ep.ui.screens
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +19,7 @@ import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.TextSource
 import com.renovacion.ep.core.VerseResult
 import com.renovacion.ep.core.Reference
+
 private data class ModoEdicionGlobal(
     val fuenteId: String,
     val referenciaInicial: String,
@@ -46,107 +45,31 @@ fun ConsultaGlobalScreen(
     var errorParsing by remember {
         mutableStateOf(false)
     }
-var mostrarDialogo by remember {
-    mutableStateOf(false)
-}
 
-var modoEdicion by remember {
-    mutableStateOf<ModoEdicionGlobal?>(null)
-}
+    var mostrarDialogo by remember {
+        mutableStateOf(false)
+    }
 
-val fuentesConsulta = SourceRegistry.todas
+    var modoEdicion by remember {
+        mutableStateOf<ModoEdicionGlobal?>(null)
+    }
+
+    val fuentesConsulta = SourceRegistry.todas
     var buscado by remember {
         mutableStateOf(false)
     }
 
     fun buscarEnFuente(
-    fuente: TextSource,
-    referencia: Reference
-): VerseResult? {
-
-    if (
-        EntradasStore.estaOculta(
-            context,
-            fuente.id,
-            referencia.display()
-        )
-    ) {
-        return null
-    }
-
-    val textoGuardado =
-        EntradasStore.obtenerTexto(
-            context,
-            fuente.id,
-            referencia.display()
-        )
-
-    return if (textoGuardado != null) {
-
-        VerseResult(
-            fuenteId = fuente.id,
-            fuenteNombre = fuente.nombre,
-            referencia = referencia.display(),
-            texto = textoGuardado,
-            disponible = true,
-            nota = "Entrada agregada por ti."
-        )
-
-    } else {
-
-        fuente.buscar(referencia)
-    }
-}
-
-fun ejecutarBusqueda() {
-
-    val referencia = ReferenceParser.parse(consulta)
-
-    if (referencia == null) {
-
-        errorParsing = true
-        resultados = emptyList()
-        buscado = false
-
-    } else {
-
-        errorParsing = false
-
-        resultados = fuentesConsulta
-            .mapNotNull { fuente ->
-
-                buscarEnFuente(
-                    fuente,
-                    referencia
-                )
-            }
-
-        buscado = true
-    }
-}
         fuente: TextSource,
         referencia: Reference
     ): VerseResult? {
-
-        if (
-            EntradasStore.estaOculta(
-                context,
-                fuente.id,
-                referencia.display()
-            )
-        ) {
+        if (EntradasStore.estaOculta(context, fuente.id, referencia.display())) {
             return null
         }
 
-        val textoGuardado =
-            EntradasStore.obtenerTexto(
-                context,
-                fuente.id,
-                referencia.display()
-            )
+        val textoGuardado = EntradasStore.obtenerTexto(context, fuente.id, referencia.display())
 
         return if (textoGuardado != null) {
-
             VerseResult(
                 fuenteId = fuente.id,
                 fuenteNombre = fuente.nombre,
@@ -155,79 +78,23 @@ fun ejecutarBusqueda() {
                 disponible = true,
                 nota = "Entrada agregada por ti."
             )
-
         } else {
-
-            fuente.buscar(referencia)
-        }
-    }        /*
-         * Una entrada ocultada en ESTE módulo no debe aparecer
-         * en Consulta Global.
-         */
-        if (
-                        resultados =
-                SourceRegistry.todas
-                    .filter {
-                        it.id != "investigacion_personal"
-                    }
-                    .mapNotNull { fuente ->
-                        buscarEnFuente(
-                            fuente,
-                            referencia
-                        )
-                    }
-
-            buscado = true
-
-        /*
-         * Primero buscamos una entrada personalizada que
-         * pertenezca exclusivamente a esta fuente.
-         */
-        val textoGuardado = EntradasStore.obtenerTexto(
-            context,
-            fuente.id,
-            referencia.display()
-        )
-
-        return if (textoGuardado != null) {
-
-            VerseResult(
-                fuenteId = fuente.id,
-                fuenteNombre = fuente.nombre,
-                referencia = referencia.display(),
-                texto = textoGuardado,
-                disponible = true,
-                nota = "Entrada agregada por ti."
-            )
-
-        } else {
-
             fuente.buscar(referencia)
         }
     }
 
     fun ejecutarBusqueda() {
-
         val referencia = ReferenceParser.parse(consulta)
 
         if (referencia == null) {
-
             errorParsing = true
             resultados = emptyList()
             buscado = false
-
         } else {
-
             errorParsing = false
-
-            resultados = fuentesConsulta
-                .mapNotNull { fuente ->
-                    buscarEnFuente(
-                        fuente,
-                        referencia
-                    )
-                }
-
+            resultados = fuentesConsulta.mapNotNull { fuente ->
+                buscarEnFuente(fuente, referencia)
+            }
             buscado = true
         }
     }
@@ -245,205 +112,115 @@ fun ejecutarBusqueda() {
         )
     }
 
-    /*
-     * Pantalla de edición de una entrada existente.
-     */
     val edicionActual = modoEdicion
 
     if (edicionActual != null) {
-
         PantallaEdicionGlobal(
             referenciaInicial = edicionActual.referenciaInicial,
             textoInicial = edicionActual.textoInicial,
             permiteEliminar = !edicionActual.esNueva,
-
             onVolver = {
                 modoEdicion = null
             },
-
             onGuardar = { referenciaTexto, textoEntrada ->
-
-                EntradasStore.guardar(
-                    context,
-                    edicionActual.fuenteId,
-                    referenciaTexto,
-                    textoEntrada
-                )
-
+                EntradasStore.guardar(context, edicionActual.fuenteId, referenciaTexto, textoEntrada)
                 modoEdicion = null
-
                 if (consulta.isNotBlank()) {
                     ejecutarBusqueda()
                 }
             },
-
             onEliminar = {
-
-                EntradasStore.eliminar(
-                    context,
-                    edicionActual.fuenteId,
-                    edicionActual.referenciaInicial
-                )
-
+                EntradasStore.eliminar(context, edicionActual.fuenteId, edicionActual.referenciaInicial)
                 modoEdicion = null
-
                 if (consulta.isNotBlank()) {
                     ejecutarBusqueda()
                 }
             }
         )
-
         return
     }
 
     Scaffold(
-
         topBar = {
-
             TopAppBar(
-
-                title = {
-                    Text("Consulta Global")
-                },
-
+                title = { Text("Consulta Global") },
                 navigationIcon = {
-
-                    IconButton(
-                        onClick = onVolver
-                    ) {
-
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
+                    IconButton(onClick = onVolver) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
         },
-
         floatingActionButton = {
-
-            FloatingActionButton(
-                onClick = {
-                    mostrarDialogo = true
-                }
-            ) {
-
-                Icon(
-                    Icons.Filled.Add,
-                    contentDescription = "Agregar entrada"
-                )
+            FloatingActionButton(onClick = { mostrarDialogo = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "Agregar entrada")
             }
         }
-
     ) { padding ->
-
         Column(
-
             modifier = Modifier
                 .padding(padding)
                 .padding(20.dp)
                 .fillMaxSize()
         ) {
-
             Text(
                 text = "Busca una referencia en las fuentes textuales.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            Spacer(
-                modifier = Modifier.height(16.dp)
-            )
+            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-
                 value = consulta,
-
                 onValueChange = {
                     consulta = it
                     errorParsing = false
                 },
-
-                label = {
-                    Text("Referencia (p. ej. Mateo 24:36)")
-                },
-
+                label = { Text("Referencia (p. ej. Mateo 24:36)") },
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
-
-            Button(
-                onClick = {
-                    ejecutarBusqueda()
-                }
-            ) {
-
+            Button(onClick = { ejecutarBusqueda() }) {
                 Text("Buscar")
             }
-
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             if (errorParsing) {
-
                 Text(
                     text = "No se pudo interpretar la referencia. Usa el formato \"Libro capítulo:verso\".",
                     color = MaterialTheme.colorScheme.error
                 )
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             if (buscado) {
-
                 Text(
                     text = "Resultados en ${resultados.size} fuente(s):",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
+                Spacer(modifier = Modifier.height(10.dp))
 
                 if (resultados.isEmpty()) {
-
                     Text(
                         text = "No hay resultados disponibles.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                 } else {
-
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-
                         items(
                             items = resultados,
-                            key = {
-                                "${it.fuenteId}:${it.referencia}"
-                            }
+                            key = { "${it.fuenteId}:${it.referencia}" }
                         ) { resultado ->
-
                             ResultadoGlobalCard(
                                 resultado = resultado,
                                 onClick = {
-
-                                    if (
-                                        resultado.texto != null &&
-                                        resultado.disponible
-                                    ) {
-
+                                    if (resultado.texto != null && resultado.disponible) {
                                         abrirEntrada(
                                             fuenteId = resultado.fuenteId,
                                             referencia = resultado.referencia,
@@ -460,19 +237,13 @@ fun ejecutarBusqueda() {
     }
 
     if (mostrarDialogo) {
-
         DialogoNuevaEntradaConFuente(
-
-            onCancelar = {
+            onCancelar = { mostrarDialogo = false },
+            onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
+                EntradasStore.guardar(context, fuenteId, referenciaTexto, textoEntrada)
                 mostrarDialogo = false
-            },
-
-            398:27 Cannot infer a type...
-398:37 Cannot infer a type...
-398:54 Cannot infer a type...
-401:21 Unresolved reference: context
-407:17 Unresolved reference: mostrarDialogo
-409:21 Unresolved reference: consulta                    ejecutarBusqueda()
+                if (consulta.isNotBlank()) {
+                    ejecutarBusqueda()
                 }
             }
         )
@@ -484,47 +255,31 @@ private fun ResultadoGlobalCard(
     resultado: VerseResult,
     onClick: () -> Unit
 ) {
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick
     ) {
-
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-
             Text(
                 text = resultado.fuenteNombre,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
-
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = resultado.referencia,
                 style = MaterialTheme.typography.titleLarge
             )
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            if (
-                resultado.disponible &&
-                resultado.texto != null
-            ) {
-
+            if (resultado.disponible && resultado.texto != null) {
                 Text(
                     text = resultado.texto,
                     style = MaterialTheme.typography.bodyLarge
                 )
-
             } else {
-
                 Text(
                     text = "No disponible en ${resultado.fuenteNombre}.",
                     style = MaterialTheme.typography.bodyLarge,
@@ -533,11 +288,7 @@ private fun ResultadoGlobalCard(
             }
 
             resultado.nota?.let {
-
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
-
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodyMedium,
@@ -558,7 +309,6 @@ private fun PantallaEdicionGlobal(
     onGuardar: (String, String) -> Unit,
     onEliminar: () -> Unit
 ) {
-
     var referenciaTexto by remember {
         mutableStateOf(referenciaInicial)
     }
@@ -572,111 +322,50 @@ private fun PantallaEdicionGlobal(
     }
 
     Scaffold(
-
         topBar = {
-
             TopAppBar(
-
                 title = {
                     Text(
-                        if (permiteEliminar)
-                            "Editar entrada"
-                        else
-                            "Nueva entrada"
+                        if (permiteEliminar) "Editar entrada" else "Nueva entrada"
                     )
                 },
-
                 navigationIcon = {
-
-                    IconButton(
-                        onClick = onVolver
-                    ) {
-
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
+                    IconButton(onClick = onVolver) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
-
                 actions = {
-
                     IconButton(
-
                         onClick = {
-
-                            if (
-                                referenciaTexto.isNotBlank() &&
-                                textoEntrada.isNotBlank()
-                            ) {
-
-                                onGuardar(
-                                    referenciaTexto,
-                                    textoEntrada
-                                )
+                            if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                                onGuardar(referenciaTexto, textoEntrada)
                             }
                         }
-
                     ) {
-
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = "Guardar"
-                        )
+                        Icon(Icons.Filled.Check, contentDescription = "Guardar")
                     }
 
-                    IconButton(
-
-                        onClick = {
-                            menuAbierto = true
-                        }
-
-                    ) {
-
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = "Más opciones"
-                        )
+                    IconButton(onClick = { menuAbierto = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones")
                     }
 
                     DropdownMenu(
-
                         expanded = menuAbierto,
-
-                        onDismissRequest = {
-                            menuAbierto = false
-                        }
-
+                        onDismissRequest = { menuAbierto = false }
                     ) {
-
                         DropdownMenuItem(
-
-                            text = {
-                                Text("Deshacer cambios")
-                            },
-
+                            text = { Text("Deshacer cambios") },
                             onClick = {
-
-                                referenciaTexto =
-                                    referenciaInicial
-
-                                textoEntrada =
-                                    textoInicial
-
+                                referenciaTexto = referenciaInicial
+                                textoEntrada = textoInicial
                                 menuAbierto = false
                             }
                         )
 
                         if (permiteEliminar) {
-
                             DropdownMenuItem(
-
-                                text = {
-                                    Text("Eliminar")
-                                },
-
+                                text = { Text("Eliminar") },
                                 onClick = {
-
                                     menuAbierto = false
                                     onEliminar()
                                 }
@@ -686,89 +375,45 @@ private fun PantallaEdicionGlobal(
                 }
             )
         }
-
     ) { padding ->
-
         Column(
-
             modifier = Modifier
                 .padding(padding)
                 .padding(20.dp)
                 .fillMaxSize()
                 .imePadding()
-                .verticalScroll(
-                    rememberScrollState()
-                )
+                .verticalScroll(rememberScrollState())
         ) {
-
             OutlinedTextField(
-
                 value = referenciaTexto,
-
-                onValueChange = {
-                    referenciaTexto = it
-                },
-
-                label = {
-                    Text("Referencia")
-                },
-
-                modifier = Modifier
-                    .fillMaxWidth()
+                onValueChange = { referenciaTexto = it },
+                label = { Text("Referencia") },
+                modifier = Modifier.fillMaxWidth()
             )
-
-            Spacer(
-                Modifier.height(12.dp)
-            )
+            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
-
                 value = textoEntrada,
-
-                onValueChange = {
-                    textoEntrada = it
-                },
-
-                label = {
-                    Text("Texto")
-                },
-
+                onValueChange = { textoEntrada = it },
+                label = { Text("Texto") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(
-                        min = 220.dp
-                    )
+                    .heightIn(min = 220.dp)
             )
-
-            Spacer(
-                Modifier.height(20.dp)
-            )
+            Spacer(Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-
-                TextButton(
-                    onClick = onVolver
-                ) {
+                TextButton(onClick = onVolver) {
                     Text("Cancelar")
                 }
-
-                Spacer(
-                    Modifier.width(8.dp)
-                )
-
+                Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = {
-                        if (
-                            referenciaTexto.isNotBlank() &&
-                            textoEntrada.isNotBlank()
-                        ) {
-                            onGuardar(
-                                referenciaTexto.trim(),
-                                textoEntrada
-                            )
+                        if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                            onGuardar(referenciaTexto.trim(), textoEntrada)
                         }
                     }
                 ) {
