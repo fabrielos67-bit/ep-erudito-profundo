@@ -642,3 +642,74 @@ private fun PantallaEdicionGlobal(
 
                 onValueChange = {
                     referenciaTexto = it
+                },
+
+                label = {
+                    Text("Referencia")
+                },
+
+                modifier = Modifier
+                    .fillMaxWidth()
+            )
+
+            Spacer(
+                Modifier.height(12.dp)
+            )
+
+            OutlinedTextField(
+
+                value = textoEntrada,
+
+                onValueChange = {
+                    textoEntrada = it
+                },
+
+                label = {
+                    Text("Texto")
+                },
+
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(
+                        min = 220.dp
+                    )
+            )
+
+            Spacer(
+                Modifier.height(20.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+
+                TextButton(
+                    onClick = onCancelar
+                ) {
+                    Text("Cancelar")
+                }
+
+                Spacer(
+                    Modifier.width(8.dp)
+                )
+
+                Button(
+                    onClick = {
+                        if (
+                            referenciaTexto.isNotBlank() &&
+                            textoEntrada.isNotBlank()
+                        ) {
+                            onGuardar(
+                                referenciaTexto.trim(),
+                                textoEntrada
+                            )
+                        }
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            }
+        }
+    }
+}
