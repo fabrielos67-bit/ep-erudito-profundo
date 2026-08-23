@@ -64,7 +64,6 @@ fun ConsultaGlobalScreen(
             )
         } else {
             val resultado = fuente.buscar(referencia)
-            // Solo devolver resultados si están marcados como disponibles y tienen texto
             if (resultado != null && resultado.disponible && !resultado.texto.isNullOrBlank()) {
                 resultado
             } else {
@@ -75,27 +74,7 @@ fun ConsultaGlobalScreen(
 
     fun ejecutarBusqueda() {
         if (consulta.isBlank()) {
-            // Si la consulta está vacía, buscar entradas personalizadas en todas las fuentes
-            val creadas = mutableListOf<VerseResult>()
-            fuentesConsulta.forEach { fuente ->
-                val claves = EntradasStore.obtenerTodasLasReferencias(context, fuente.id)
-                claves.forEach { refStr ->
-                    val texto = EntradasStore.obtenerTexto(context, fuente.id, refStr)
-                    if (texto != null) {
-                        creadas.add(
-                            VerseResult(
-                                fuenteId = fuente.id,
-                                fuenteNombre = fuente.nombre,
-                                referencia = refStr,
-                                texto = texto,
-                                disponible = true,
-                                nota = "Entrada agregada por ti."
-                            )
-                        )
-                    }
-                }
-            }
-            resultados = creadas
+            resultados = emptyList()
             errorParsing = false
             return
         }
@@ -111,11 +90,6 @@ fun ConsultaGlobalScreen(
                 buscarEnFuente(fuente, referencia)
             }
         }
-    }
-
-    // Al cargar por primera vez la pantalla, cargar las entradas existentes
-    LaunchedEffect(Unit) {
-        ejecutarBusqueda()
     }
 
     fun abrirEdicion(
@@ -230,7 +204,7 @@ fun ConsultaGlobalScreen(
 
             if (resultados.isEmpty()) {
                 Text(
-                    text = "No hay entradas disponibles.",
+                    text = if (consulta.isBlank()) "Ingresa una referencia para buscar." else "No hay entradas disponibles para esta consulta.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
