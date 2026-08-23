@@ -1,6 +1,8 @@
 package com.renovacion.ep.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -10,12 +12,10 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.renovacion.ep.core.EntradasStore
-import com.renovacion.ep.core.Reference
 import com.renovacion.ep.core.ReferenceParser
 import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.TextSource
@@ -51,21 +51,56 @@ fun ConsultaGlobalScreen(
         mutableStateOf(false)
     }
 
+    var mostrarDialogo by remember {
+        mutableStateOf(false)
+    }
+
     var modoEdicion by remember {
         mutableStateOf<ModoEdicionGlobal?>(null)
     }
 
+    /*
+     * Consulta Global trabaja solamente con fuentes textuales.
+     *
+     * Cada fuente sigue siendo independiente:
+     * - sus entradas pertenecen a su propio fuenteId
+     * - sus entradas ocultas pertenecen a su propio fuenteId
+     * - no copiamos entradas entre módulos
+     */
+    val fuentesConsulta = remember {
+        SourceRegistry.todas.filter {
+            it.id != "investigacion_personal"
+        }
+    }
+
     fun buscarEnFuente(
         fuente: TextSource,
-        referencia: Reference
-    ): VerseResult {
+        referencia: com.renovacion.ep.core.Reference
+    ): VerseResult? {
 
-        val textoGuardado =
-            EntradasStore.obtenerTexto(
+        /*
+         * Una entrada ocultada en ESTE módulo no debe aparecer
+         * en Consulta Global.
+         */
+        if (
+            EntradasStore.estaOculta(
                 context,
                 fuente.id,
                 referencia.display()
             )
+        ) {
+            return null
+        }
+
+        /*
+         * Primero buscamos una entrada personalizada que
+         * pertenezca exclusivamente a esta fuente.
+         */
+        val textoGuardado = EntradasStore.obtenerTexto(
+            context,
+            fuente.id,
+            referencia.display()
+        )
 
         return if (textoGuardado != null) {
 
@@ -86,8 +121,7 @@ fun ConsultaGlobalScreen(
 
     fun ejecutarBusqueda() {
 
-        val referencia =
-            ReferenceParser.parse(consulta)
+        val referencia = ReferenceParser.parse(consulta)
 
         if (referencia == null) {
 
@@ -99,8 +133,8 @@ fun ConsultaGlobalScreen(
 
             errorParsing = false
 
-            resultados =
-                SourceRegistry.todas.map { fuente ->
+            resultados = fuentesConsulta
+                .mapNotNull { fuente ->
                     buscarEnFuente(
                         fuente,
                         referencia
@@ -111,30 +145,42 @@ fun ConsultaGlobalScreen(
         }
     }
 
+    fun abrirEntrada(
+        fuenteId: String,
+        referencia: String,
+        texto: String
+    ) {
+        modoEdicion = ModoEdicionGlobal(
+            fuenteId = fuenteId,
+            referenciaInicial = referencia,
+            textoInicial = texto,
+            esNueva = false
+        )
+    }
+
+    /*
+     * Pantalla de edición de una entrada existente.
+     */
     val edicionActual = modoEdicion
 
     if (edicionActual != null) {
 
-        EditorEntradaGlobal(
-            fuenteId = edicionActual.fuenteId,
+        PantallaEdicionGlobal(
             referenciaInicial = edicionActual.referenciaInicial,
             textoInicial = edicionActual.textoInicial,
-            esNueva = edicionActual.esNueva,
+            permiteEliminar = !edicionActual.esNueva,
 
             onVolver = {
                 modoEdicion = null
             },
 
-            onGuardar = {
-                    fuenteId,
-                    referencia,
-                    texto ->
+            onGuardar = { referenciaTexto, textoEntrada ->
 
                 EntradasStore.guardar(
                     context,
-                    fuenteId,
-                    referencia,
-                    texto
+                    edicionActual.fuenteId,
+                    referenciaTexto,
+                    textoEntrada
                 )
 
                 modoEdicion = null
@@ -191,24 +237,9 @@ fun ConsultaGlobalScreen(
         floatingActionButton = {
 
             FloatingActionButton(
-
                 onClick = {
-
-                    val fuente =
-                        SourceRegistry.todas.firstOrNull()
-
-                    if (fuente != null) {
-
-                        modoEdicion =
-                            ModoEdicionGlobal(
-                                fuenteId = fuente.id,
-                                referenciaInicial = "",
-                                textoInicial = "",
-                                esNueva = true
-                            )
-                    }
+                    mostrarDialogo = true
                 }
-
             ) {
 
                 Icon(
@@ -229,14 +260,9 @@ fun ConsultaGlobalScreen(
         ) {
 
             Text(
-                text =
-                    "Busca una referencia bíblica en todas las fuentes registradas.",
-
-                style =
-                    MaterialTheme.typography.bodyMedium,
-
-                color =
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Busca una referencia en las fuentes textuales.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(
@@ -253,15 +279,10 @@ fun ConsultaGlobalScreen(
                 },
 
                 label = {
-                    Text(
-                        "Referencia (p. ej. Mateo 24:36)"
-                    )
+                    Text("Referencia (p. ej. Mateo 24:36)")
                 },
 
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                singleLine = true
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(
@@ -284,12 +305,8 @@ fun ConsultaGlobalScreen(
             if (errorParsing) {
 
                 Text(
-                    text =
-                        "No se pudo interpretar la referencia. " +
-                                "Usa el formato \"Libro capítulo:verso\".",
-
-                    color =
-                        MaterialTheme.colorScheme.error
+                    text = "No se pudo interpretar la referencia. Usa el formato \"Libro capítulo:verso\".",
+                    color = MaterialTheme.colorScheme.error
                 )
 
                 Spacer(
@@ -300,83 +317,152 @@ fun ConsultaGlobalScreen(
             if (buscado) {
 
                 Text(
-                    text =
-                        "Resultados en ${resultados.size} fuente(s):",
-
-                    style =
-                        MaterialTheme.typography.titleLarge,
-
-                    color =
-                        MaterialTheme.colorScheme.onBackground
+                    text = "Resultados en ${resultados.size} fuente(s):",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(
-                    modifier = Modifier.height(12.dp)
+                    modifier = Modifier.height(10.dp)
                 )
 
-                Column(
+                if (resultados.isEmpty()) {
 
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(
-                            rememberScrollState()
-                        ),
+                    Text(
+                        text = "No hay resultados disponibles.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-                    verticalArrangement =
-                        Arrangement.spacedBy(12.dp)
-                ) {
+                } else {
 
-                    resultados.forEach { resultado ->
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
 
-                        ResultadoCardGlobal(
-                            resultado = resultado,
-
-                            onEditar = {
-
-                                modoEdicion =
-                                    ModoEdicionGlobal(
-
-                                        fuenteId =
-                                            resultado.fuenteId,
-
-                                        referenciaInicial =
-                                            resultado.referencia,
-
-                                        textoInicial =
-                                            resultado.texto ?: "",
-
-                                        esNueva = false
-                                    )
+                        items(
+                            items = resultados,
+                            key = {
+                                "${it.fuenteId}:${it.referencia}"
                             }
-                        )
+                        ) { resultado ->
+
+                            ResultadoGlobalCard(
+                                resultado = resultado,
+                                onClick = {
+
+                                    if (
+                                        resultado.texto != null &&
+                                        resultado.disponible
+                                    ) {
+
+                                        abrirEntrada(
+                                            fuenteId = resultado.fuenteId,
+                                            referencia = resultado.referencia,
+                                            texto = resultado.texto
+                                        )
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    if (mostrarDialogo) {
+
+        DialogoNuevaEntradaConFuente(
+
+            onCancelar = {
+                mostrarDialogo = false
+            },
+
+            onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
+
+                EntradasStore.guardar(
+                    context,
+                    fuenteId,
+                    referenciaTexto,
+                    textoEntrada
+                )
+
+                mostrarDialogo = false
+
+                if (consulta.isNotBlank()) {
+                    ejecutarBusqueda()
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ResultadoGlobalCard(
+    resultado: VerseResult,
+    onClick: () -> Unit
+) {
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick
+    ) {
+
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Text(
+                text = resultado.fuenteNombre,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
+
+            Text(
+                text = resultado.referencia,
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(
+                modifier = Modifier.height(8.dp)
+            )
+
+            if (
+                resultado.disponible &&
+                resultado.texto != null
+            ) {
+
+                Text(
+                    text = resultado.texto,
+                    style = MaterialTheme.typography.bodyLarge
+                )
 
             } else {
 
-                Column(
+                Text(
+                    text = "No disponible en ${resultado.fuenteNombre}.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(
-                            rememberScrollState()
-                        )
-                ) {
+            resultado.nota?.let {
 
-                    Text(
-                        text =
-                            "Consulta Global permite buscar la misma " +
-                                    "referencia en todas las fuentes.",
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
 
-                        style =
-                            MaterialTheme.typography.bodyLarge,
-
-                        color =
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -384,15 +470,15 @@ fun ConsultaGlobalScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EditorEntradaGlobal(
-    fuenteId: String,
+private fun PantallaEdicionGlobal(
     referenciaInicial: String,
     textoInicial: String,
-    esNueva: Boolean,
+    permiteEliminar: Boolean,
     onVolver: () -> Unit,
-    onGuardar: (String, String, String) -> Unit,
+    onGuardar: (String, String) -> Unit,
     onEliminar: () -> Unit
 ) {
+
     var referenciaTexto by remember {
         mutableStateOf(referenciaInicial)
     }
@@ -405,9 +491,6 @@ private fun EditorEntradaGlobal(
         mutableStateOf(false)
     }
 
-    val fuente =
-        SourceRegistry.porId(fuenteId)
-
     Scaffold(
 
         topBar = {
@@ -416,10 +499,10 @@ private fun EditorEntradaGlobal(
 
                 title = {
                     Text(
-                        if (esNueva)
-                            "Nueva entrada"
-                        else
+                        if (permiteEliminar)
                             "Editar entrada"
+                        else
+                            "Nueva entrada"
                     )
                 },
 
@@ -448,8 +531,7 @@ private fun EditorEntradaGlobal(
                             ) {
 
                                 onGuardar(
-                                    fuenteId,
-                                    referenciaTexto.trim(),
+                                    referenciaTexto,
                                     textoEntrada
                                 )
                             }
@@ -505,7 +587,7 @@ private fun EditorEntradaGlobal(
                             }
                         )
 
-                        if (!esNueva) {
+                        if (permiteEliminar) {
 
                             DropdownMenuItem(
 
@@ -516,7 +598,6 @@ private fun EditorEntradaGlobal(
                                 onClick = {
 
                                     menuAbierto = false
-
                                     onEliminar()
                                 }
                             )
@@ -540,163 +621,9 @@ private fun EditorEntradaGlobal(
                 )
         ) {
 
-            Text(
-
-                text =
-                    fuente?.nombre
-                        ?: "Fuente no encontrada",
-
-                style =
-                    MaterialTheme.typography.titleMedium,
-
-                color =
-                    MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
-
             OutlinedTextField(
 
                 value = referenciaTexto,
 
                 onValueChange = {
                     referenciaTexto = it
-                },
-
-                label = {
-                    Text(
-                        "Referencia (p. ej. Mateo 24:36)"
-                    )
-                },
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                singleLine = true
-            )
-
-            Spacer(
-                modifier = Modifier.height(16.dp)
-            )
-
-            OutlinedTextField(
-
-                value = textoEntrada,
-
-                onValueChange = {
-                    textoEntrada = it
-                },
-
-                label = {
-                    Text("Texto")
-                },
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                minLines = 12
-            )
-
-            Spacer(
-                modifier = Modifier.height(40.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ResultadoCardGlobal(
-    resultado: VerseResult,
-    onEditar: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-
-            Text(
-                text = resultado.fuenteNombre,
-
-                style =
-                    MaterialTheme.typography.titleMedium,
-
-                color =
-                    MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
-
-            Text(
-                text = resultado.referencia,
-
-                style =
-                    MaterialTheme.typography.titleLarge
-            )
-
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            if (
-                resultado.disponible &&
-                resultado.texto != null
-            ) {
-
-                Text(
-                    text = resultado.texto,
-
-                    style =
-                        MaterialTheme.typography.bodyLarge
-                )
-
-            } else {
-
-                Text(
-                    text =
-                        "No disponible en ${resultado.fuenteNombre}.",
-
-                    style =
-                        MaterialTheme.typography.bodyLarge,
-
-                    color =
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            resultado.nota?.let {
-
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
-
-                Text(
-                    text = it,
-
-                    style =
-                        MaterialTheme.typography.bodyMedium,
-
-                    color =
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            TextButton(
-                onClick = onEditar
-            ) {
-
-                Text("Editar")
-            }
-        }
-    }
-}
