@@ -36,30 +36,13 @@ fun ConsultaGlobalScreen(
 ) {
     val context = LocalContext.current
 
-    var consulta by remember {
-        mutableStateOf("")
-    }
-
-    var resultados by remember {
-        mutableStateOf<List<VerseResult>>(emptyList())
-    }
-
-    var errorParsing by remember {
-        mutableStateOf(false)
-    }
-
-    var mostrarDialogo by remember {
-        mutableStateOf(false)
-    }
-
-    var modoEdicion by remember {
-        mutableStateOf<ModoEdicionGlobal?>(null)
-    }
+    var consulta by remember { mutableStateOf("") }
+    var resultados by remember { mutableStateOf<List<VerseResult>>(emptyList()) }
+    var errorParsing by remember { mutableStateOf(false) }
+    var modoEdicion by remember { mutableStateOf<ModoEdicionGlobal?>(null) }
 
     val fuentesConsulta = SourceRegistry.todas
-    var buscado by remember {
-        mutableStateOf(false)
-    }
+    var buscado by remember { mutableStateOf(false) }
 
     fun buscarEnFuente(
         fuente: TextSource,
@@ -101,16 +84,17 @@ fun ConsultaGlobalScreen(
         }
     }
 
-    fun abrirEntrada(
+    fun abrirEdicion(
         fuenteId: String,
         referencia: String,
-        texto: String
+        texto: String,
+        esNueva: Boolean
     ) {
         modoEdicion = ModoEdicionGlobal(
             fuenteId = fuenteId,
             referenciaInicial = referencia,
             textoInicial = texto,
-            esNueva = false
+            esNueva = esNueva
         )
     }
 
@@ -118,14 +102,15 @@ fun ConsultaGlobalScreen(
 
     if (edicionActual != null) {
         PantallaEdicionGlobal(
+            fuenteIdInicial = edicionActual.fuenteId,
             referenciaInicial = edicionActual.referenciaInicial,
             textoInicial = edicionActual.textoInicial,
             permiteEliminar = !edicionActual.esNueva,
             onVolver = {
                 modoEdicion = null
             },
-            onGuardar = { referenciaTexto, textoEntrada ->
-                EntradasStore.guardar(context, edicionActual.fuenteId, referenciaTexto, textoEntrada)
+            onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
+                EntradasStore.guardar(context, fuenteId, referenciaTexto, textoEntrada)
                 modoEdicion = null
                 if (consulta.isNotBlank()) {
                     ejecutarBusqueda()
@@ -154,7 +139,17 @@ fun ConsultaGlobalScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { mostrarDialogo = true }) {
+            FloatingActionButton(
+                onClick = {
+                    val primeraFuente = fuentesConsulta.firstOrNull()?.id ?: ""
+                    abrirEdicion(
+                        fuenteId = primeraFuente,
+                        referencia = consulta,
+                        texto = "",
+                        esNueva = true
+                    )
+                }
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "Agregar entrada")
             }
         }
@@ -223,10 +218,11 @@ fun ConsultaGlobalScreen(
                                 resultado = resultado,
                                 onClick = {
                                     if (resultado.texto != null && resultado.disponible) {
-                                        abrirEntrada(
+                                        abrirEdicion(
                                             fuenteId = resultado.fuenteId,
                                             referencia = resultado.referencia,
-                                            texto = resultado.texto
+                                            texto = resultado.texto,
+                                            esNueva = false
                                         )
                                     }
                                 }
@@ -237,108 +233,6 @@ fun ConsultaGlobalScreen(
             }
         }
     }
-
-    if (mostrarDialogo) {
-        DialogoNuevaEntradaConFuente(
-            onCancelar = { mostrarDialogo = false },
-            onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
-                EntradasStore.guardar(context, fuenteId, referenciaTexto, textoEntrada)
-                mostrarDialogo = false
-                if (consulta.isNotBlank()) {
-                    ejecutarBusqueda()
-                }
-            }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DialogoNuevaEntradaConFuente(
-    onCancelar: () -> Unit,
-    onGuardar: (fuenteId: String, referenciaTexto: String, textoEntrada: String) -> Unit
-) {
-    val fuentes = SourceRegistry.todas
-    var fuenteSeleccionada by remember { mutableStateOf(fuentes.firstOrNull()?.id ?: "") }
-    var referenciaTexto by remember { mutableStateOf("") }
-    var textoEntrada by remember { mutableStateOf("") }
-    var menuFuenteExpandido by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        title = { Text("Nueva Entrada") },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ExposedDropdownMenuBox(
-                    expanded = menuFuenteExpandido,
-                    onExpandedChange = { menuFuenteExpandido = !menuFuenteExpandido }
-                ) {
-                    val nombreFuente = fuentes.find { it.id == fuenteSeleccionada }?.nombre ?: "Seleccionar fuente"
-                    OutlinedTextField(
-                        value = nombreFuente,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Fuente") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuFuenteExpandido) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = menuFuenteExpandido,
-                        onDismissRequest = { menuFuenteExpandido = false }
-                    ) {
-                        fuentes.forEach { fuente ->
-                            DropdownMenuItem(
-                                text = { Text(fuente.nombre) },
-                                onClick = {
-                                    fuenteSeleccionada = fuente.id
-                                    menuFuenteExpandido = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = referenciaTexto,
-                    onValueChange = { referenciaTexto = it },
-                    label = { Text("Referencia (ej. Mateo 24:36)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = textoEntrada,
-                    onValueChange = { textoEntrada = it },
-                    label = { Text("Texto") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 120.dp)
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
-                        onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
-                    }
-                }
-            ) {
-                Text("Guardar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) {
-                Text("Cancelar")
-            }
-        }
-    )
 }
 
 @Composable
@@ -393,24 +287,21 @@ private fun ResultadoGlobalCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaEdicionGlobal(
+    fuenteIdInicial: String,
     referenciaInicial: String,
     textoInicial: String,
     permiteEliminar: Boolean,
     onVolver: () -> Unit,
-    onGuardar: (String, String) -> Unit,
+    onGuardar: (fuenteId: String, referenciaTexto: String, textoEntrada: String) -> Unit,
     onEliminar: () -> Unit
 ) {
-    var referenciaTexto by remember {
-        mutableStateOf(referenciaInicial)
-    }
+    val fuentes = SourceRegistry.todas
+    var fuenteSeleccionada by remember { mutableStateOf(fuenteIdInicial) }
+    var referenciaTexto by remember { mutableStateOf(referenciaInicial) }
+    var textoEntrada by remember { mutableStateOf(textoInicial) }
 
-    var textoEntrada by remember {
-        mutableStateOf(textoInicial)
-    }
-
-    var menuAbierto by remember {
-        mutableStateOf(false)
-    }
+    var menuAbierto by remember { mutableStateOf(false) }
+    var menuFuenteExpandido by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -428,8 +319,8 @@ private fun PantallaEdicionGlobal(
                 actions = {
                     IconButton(
                         onClick = {
-                            if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
-                                onGuardar(referenciaTexto, textoEntrada)
+                            if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                                onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
                             }
                         }
                     ) {
@@ -445,8 +336,19 @@ private fun PantallaEdicionGlobal(
                         onDismissRequest = { menuAbierto = false }
                     ) {
                         DropdownMenuItem(
+                            text = { Text("Guardar") },
+                            onClick = {
+                                menuAbierto = false
+                                if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                                    onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
+                                }
+                            }
+                        )
+
+                        DropdownMenuItem(
                             text = { Text("Deshacer cambios") },
                             onClick = {
+                                fuenteSeleccionada = fuenteIdInicial
                                 referenciaTexto = referenciaInicial
                                 textoEntrada = textoInicial
                                 menuAbierto = false
@@ -473,15 +375,48 @@ private fun PantallaEdicionGlobal(
                 .padding(20.dp)
                 .fillMaxSize()
                 .imePadding()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Desplegable de Fuente fluido (sin recuadro tosco)
+            ExposedDropdownMenuBox(
+                expanded = menuFuenteExpandido,
+                onExpandedChange = { menuFuenteExpandido = !menuFuenteExpandido }
+            ) {
+                val nombreFuente = fuentes.find { it.id == fuenteSeleccionada }?.nombre ?: "Seleccionar fuente"
+                OutlinedTextField(
+                    value = nombreFuente,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Fuente") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuFuenteExpandido) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = menuFuenteExpandido,
+                    onDismissRequest = { menuFuenteExpandido = false }
+                ) {
+                    fuentes.forEach { fuente ->
+                        DropdownMenuItem(
+                            text = { Text(fuente.nombre) },
+                            onClick = {
+                                fuenteSeleccionada = fuente.id
+                                menuFuenteExpandido = false
+                            }
+                        )
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = referenciaTexto,
                 onValueChange = { referenciaTexto = it },
                 label = { Text("Referencia") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
-            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = textoEntrada,
@@ -489,9 +424,9 @@ private fun PantallaEdicionGlobal(
                 label = { Text("Texto") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 220.dp)
+                    .weight(1f, fill = false)
+                    .heightIn(min = 250.dp)
             )
-            Spacer(Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -503,8 +438,8 @@ private fun PantallaEdicionGlobal(
                 Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = {
-                        if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
-                            onGuardar(referenciaTexto.trim(), textoEntrada)
+                        if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                            onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
                         }
                     }
                 ) {
