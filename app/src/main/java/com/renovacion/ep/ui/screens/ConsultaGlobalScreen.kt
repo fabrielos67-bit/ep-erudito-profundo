@@ -5,8 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,13 +16,6 @@ import com.renovacion.ep.core.ReferenceParser
 import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.TextSource
 import com.renovacion.ep.core.VerseResult
-
-private data class ModoEdicionGlobal(
-    val fuenteId: String,
-    val referenciaInicial: String,
-    val textoInicial: String,
-    val esNueva: Boolean
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,11 +28,19 @@ fun ConsultaGlobalScreen(
     var resultados by remember {
         mutableStateOf<List<VerseResult>>(emptyList())
     }
-    var errorParsing by remember { mutableStateOf(false) }
-    var buscado by remember { mutableStateOf(false) }
+    var errorParsing by remember {
+        mutableStateOf(false)
+    }
+    var buscado by remember {
+        mutableStateOf(false)
+    }
 
     var modoEdicion by remember {
-        mutableStateOf<ModoEdicionGlobal?>(null)
+        mutableStateOf<ModoEdicion?>(null)
+    }
+
+    var mostrarSelectorFuente by remember {
+        mutableStateOf(false)
     }
 
     fun buscarEnFuente(
@@ -99,51 +99,70 @@ fun ConsultaGlobalScreen(
 
     val edicionActual = modoEdicion
 
+    /*
+     * IMPORTANTE:
+     * Consulta Global utiliza exactamente el mismo editor
+     * que utilizan los demás módulos.
+     */
     if (edicionActual != null) {
 
-        PantallaEdicionGlobal(
-            fuenteInicial = edicionActual.fuenteId,
-            referenciaInicial = edicionActual.referenciaInicial,
-            textoInicial = edicionActual.textoInicial,
-            permiteEliminar = !edicionActual.esNueva,
-
-            onVolver = {
-                modoEdicion = null
-            },
-
-            onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
-
-                EntradasStore.guardar(
-                    context,
-                    fuenteId,
-                    referenciaTexto,
-                    textoEntrada
-                )
-
-                modoEdicion = null
-
-                if (consulta.isNotBlank()) {
-                    ejecutarBusqueda()
-                }
-            },
-
-            onEliminar = {
-
-                EntradasStore.eliminar(
-                    context,
-                    edicionActual.fuenteId,
-                    edicionActual.referenciaInicial
-                )
-
-                modoEdicion = null
-
-                if (consulta.isNotBlank()) {
-                    ejecutarBusqueda()
-                }
-            }
+        val fuente = SourceRegistry.porId(
+            edicionActual.fuenteId
         )
 
-        return
+        if (fuente != null) {
+
+            PantallaEdicionEntrada(
+
+                referenciaInicial =
+                    edicionActual.referenciaInicial,
+
+                textoInicial =
+                    edicionActual.textoInicial,
+
+                permiteEliminar =
+                    !edicionActual.esNueva,
+
+                onVolver = {
+                    modoEdicion = null
+                },
+
+                onGuardar = {
+                    referenciaTexto,
+                    textoEntrada ->
+
+                    EntradasStore.guardar(
+                        context,
+                        fuente.id,
+                        referenciaTexto,
+                        textoEntrada
+                    )
+
+                    modoEdicion = null
+
+                    if (consulta.isNotBlank()) {
+                        ejecutarBusqueda()
+                    }
+                },
+
+                onEliminar = {
+
+                    EntradasStore.eliminar(
+                        context,
+                        fuente.id,
+                        edicionActual.referenciaInicial
+                    )
+
+                    modoEdicion = null
+
+                    if (consulta.isNotBlank()) {
+                        ejecutarBusqueda()
+                    }
+                }
+            )
+
+            return
+        }
     }
 
     Scaffold(
@@ -169,6 +188,23 @@ fun ConsultaGlobalScreen(
                     }
                 }
             )
+        },
+
+        floatingActionButton = {
+
+            FloatingActionButton(
+
+                onClick = {
+                    mostrarSelectorFuente = true
+                }
+
+            ) {
+
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Agregar entrada"
+                )
+            }
         }
 
     ) { padding ->
@@ -204,7 +240,9 @@ fun ConsultaGlobalScreen(
                 },
 
                 label = {
-                    Text("Referencia (p. ej. Mateo 24:36)")
+                    Text(
+                        "Referencia (p. ej. Mateo 24:36)"
+                    )
                 },
 
                 modifier = Modifier.fillMaxWidth()
@@ -229,17 +267,26 @@ fun ConsultaGlobalScreen(
             if (errorParsing) {
 
                 Text(
-                    text = "No se pudo interpretar la referencia. Usa el formato \"Libro capítulo:verso\".",
-                    color = MaterialTheme.colorScheme.error
+                    text =
+                        "No se pudo interpretar la referencia. " +
+                        "Usa el formato \"Libro capítulo:verso\".",
+
+                    color =
+                        MaterialTheme.colorScheme.error
                 )
             }
 
             if (buscado) {
 
                 Text(
-                    text = "Resultados en ${resultados.size} fuente(s):",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground
+                    text =
+                        "Resultados en ${resultados.size} fuente(s):",
+
+                    style =
+                        MaterialTheme.typography.titleLarge,
+
+                    color =
+                        MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(
@@ -248,18 +295,7 @@ fun ConsultaGlobalScreen(
 
                 resultados.forEach { resultado ->
 
-                    ResultadoCardGlobal(
-                        resultado = resultado,
-                        onEditar = {
-
-                            modoEdicion = ModoEdicionGlobal(
-                                fuenteId = resultado.fuenteId,
-                                referenciaInicial = resultado.referencia,
-                                textoInicial = resultado.texto ?: "",
-                                esNueva = false
-                            )
-                        }
-                    )
+                    ResultadoCard(resultado)
 
                     Spacer(
                         modifier = Modifier.height(12.dp)
@@ -273,376 +309,73 @@ fun ConsultaGlobalScreen(
         }
     }
 
-    FloatingActionButton(
-        onClick = {
+    /*
+     * Selector de fuente solamente para una NUEVA entrada.
+     * Después de seleccionar la fuente se abre el mismo editor
+     * normal de los módulos.
+     */
+    if (mostrarSelectorFuente) {
 
-            val fuenteInicial =
-                SourceRegistry.todas.firstOrNull()
+        AlertDialog(
 
-            if (fuenteInicial != null) {
+            onDismissRequest = {
+                mostrarSelectorFuente = false
+            },
 
-                modoEdicion = ModoEdicionGlobal(
-                    fuenteId = fuenteInicial.id,
-                    referenciaInicial = consulta,
-                    textoInicial = "",
-                    esNueva = true
-                )
-            }
-        },
+            title = {
+                Text("Seleccionar fuente")
+            },
 
-        modifier = Modifier
-            .padding(16.dp)
-    ) {
-        Icon(
-            Icons.Filled.Check,
-            contentDescription = "Nueva entrada"
-        )
-    }
-}
+            text = {
 
-@Composable
-private fun ResultadoCardGlobal(
-    resultado: VerseResult,
-    onEditar: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+                Column {
 
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+                    SourceRegistry.todas.forEach { fuente ->
 
-            Text(
-                text = resultado.fuenteNombre,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
-
-            Text(
-                text = resultado.referencia,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            if (
-                resultado.disponible &&
-                resultado.texto != null
-            ) {
-
-                Text(
-                    text = resultado.texto,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
-
-                TextButton(
-                    onClick = onEditar
-                ) {
-                    Text("Editar")
-                }
-
-            } else {
-
-                Text(
-                    text = "No disponible.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            resultado.nota?.let {
-
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
-
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PantallaEdicionGlobal(
-    fuenteInicial: String,
-    referenciaInicial: String,
-    textoInicial: String,
-    permiteEliminar: Boolean,
-    onVolver: () -> Unit,
-    onGuardar: (String, String, String) -> Unit,
-    onEliminar: () -> Unit
-) {
-
-    var fuenteId by remember {
-        mutableStateOf(fuenteInicial)
-    }
-
-    var referenciaTexto by remember {
-        mutableStateOf(referenciaInicial)
-    }
-
-    var textoEntrada by remember {
-        mutableStateOf(textoInicial)
-    }
-
-    var menuAbierto by remember {
-        mutableStateOf(false)
-    }
-
-    var fuenteMenuAbierto by remember {
-        mutableStateOf(false)
-    }
-
-    val fuenteSeleccionada =
-        SourceRegistry.todas.firstOrNull {
-            it.id == fuenteId
-        }
-
-    Scaffold(
-
-        topBar = {
-
-            TopAppBar(
-
-                title = {
-                    Text(
-                        if (permiteEliminar)
-                            "Editar entrada"
-                        else
-                            "Nueva entrada"
-                    )
-                },
-
-                navigationIcon = {
-
-                    IconButton(
-                        onClick = onVolver
-                    ) {
-
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-
-                actions = {
-
-                    IconButton(
-
-                        onClick = {
-
-                            if (
-                                referenciaTexto.isNotBlank() &&
-                                textoEntrada.isNotBlank()
-                            ) {
-
-                                onGuardar(
-                                    fuenteId,
-                                    referenciaTexto,
-                                    textoEntrada
-                                )
-                            }
-                        }
-
-                    ) {
-
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = "Guardar"
-                        )
-                    }
-
-                    IconButton(
-
-                        onClick = {
-                            menuAbierto = true
-                        }
-
-                    ) {
-
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = "Más opciones"
-                        )
-                    }
-
-                    DropdownMenu(
-
-                        expanded = menuAbierto,
-
-                        onDismissRequest = {
-                            menuAbierto = false
-                        }
-
-                    ) {
-
-                        DropdownMenuItem(
-
-                            text = {
-                                Text("Deshacer cambios")
-                            },
+                        TextButton(
 
                             onClick = {
 
-                                referenciaTexto =
-                                    referenciaInicial
+                                mostrarSelectorFuente = false
 
-                                textoEntrada =
-                                    textoInicial
+                                modoEdicion =
+                                    ModoEdicion(
 
-                                fuenteId =
-                                    fuenteInicial
+                                        referenciaInicial =
+                                            consulta,
 
-                                menuAbierto = false
-                            }
-                        )
+                                        textoInicial = "",
 
-                        if (permiteEliminar) {
+                                        esNueva = true
+                                    )
 
-                            DropdownMenuItem(
+                                fuenteSeleccionadaTemporal =
+                                    fuente.id
+                            },
 
-                                text = {
-                                    Text("Eliminar")
-                                },
+                            modifier =
+                                Modifier.fillMaxWidth()
 
-                                onClick = {
+                        ) {
 
-                                    menuAbierto = false
-                                    onEliminar()
-                                }
+                            Text(
+                                text = fuente.nombre
                             )
                         }
                     }
                 }
-            )
-        }
+            },
 
-    ) { padding ->
+            confirmButton = {
 
-        Column(
-
-            modifier = Modifier
-                .padding(padding)
-                .padding(20.dp)
-                .fillMaxSize()
-                .imePadding()
-                .verticalScroll(
-                    rememberScrollState()
-                )
-        ) {
-
-            Text(
-                text = "Fuente",
-                style = MaterialTheme.typography.labelLarge
-            )
-
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
-
-            OutlinedButton(
-
-                onClick = {
-                    fuenteMenuAbierto = true
-                },
-
-                modifier = Modifier.fillMaxWidth()
-            ) {
-
-                Text(
-                    fuenteSeleccionada?.nombre
-                        ?: "Seleccionar fuente"
-                )
-            }
-
-            DropdownMenu(
-
-                expanded = fuenteMenuAbierto,
-
-                onDismissRequest = {
-                    fuenteMenuAbierto = false
-                }
-
-            ) {
-
-                SourceRegistry.todas.forEach { fuente ->
-
-                    DropdownMenuItem(
-
-                        text = {
-                            Text(fuente.nombre)
-                        },
-
-                        onClick = {
-
-                            fuenteId = fuente.id
-                            fuenteMenuAbierto = false
-                        }
-                    )
+                TextButton(
+                    onClick = {
+                        mostrarSelectorFuente = false
+                    }
+                ) {
+                    Text("Cancelar")
                 }
             }
-
-            Spacer(
-                modifier = Modifier.height(16.dp)
-            )
-
-            OutlinedTextField(
-
-                value = referenciaTexto,
-
-                onValueChange = {
-                    referenciaTexto = it
-                },
-
-                label = {
-                    Text("Referencia (p. ej. Mateo 24:36)")
-                },
-
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(
-                modifier = Modifier.height(16.dp)
-            )
-
-            OutlinedTextField(
-
-                value = textoEntrada,
-
-                onValueChange = {
-                    textoEntrada = it
-                },
-
-                label = {
-                    Text("Texto")
-                },
-
-                modifier = Modifier.fillMaxWidth(),
-
-                minLines = 10
-            )
-
-            Spacer(
-                modifier = Modifier.height(24.dp)
-            )
-        }
+        )
     }
 }
