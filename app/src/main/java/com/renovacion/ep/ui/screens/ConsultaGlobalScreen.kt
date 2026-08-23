@@ -42,54 +42,67 @@ fun ConsultaGlobalScreen(
     var modoEdicion by remember { mutableStateOf<ModoEdicionGlobal?>(null) }
 
     val fuentesConsulta = SourceRegistry.todas
+    val ID_FUENTE_GLOBAL = "global_user_entries"
 
-    fun buscarEnFuente(
-        fuente: TextSource,
-        referencia: Reference
-    ): VerseResult? {
-        if (EntradasStore.estaOculta(context, fuente.id, referencia.display())) {
-            return null
-        }
+    fun cargarEntradas() {
+        val listaResultados = mutableListOf<VerseResult>()
 
-        val textoGuardado = EntradasStore.obtenerTexto(context, fuente.id, referencia.display())
+        // 1. Cargar entradas personalizadas guardadas localmente
+        val refABuscar = consulta.trim()
+        val textoGuardado = if (refABuscar.isNotBlank()) {
+            EntradasStore.obtenerTexto(context, ID_FUENTE_GLOBAL, refABuscar)
+        } else null
 
-        return if (textoGuardado != null) {
-            VerseResult(
-                fuenteId = fuente.id,
-                fuenteNombre = fuente.nombre,
-                referencia = referencia.display(),
-                texto = textoGuardado,
-                disponible = true,
-                nota = "Entrada agregada por ti."
+        if (textoGuardado != null) {
+            listaResultados.add(
+                VerseResult(
+                    fuenteId = ID_FUENTE_GLOBAL,
+                    fuenteNombre = "Mi Entrada Personal",
+                    referencia = refABuscar,
+                    texto = textoGuardado,
+                    disponible = true,
+                    nota = "Entrada agregada por ti."
+                )
             )
-        } else {
-            val resultado = fuente.buscar(referencia)
-            if (resultado != null && resultado.disponible && !resultado.texto.isNullOrBlank()) {
-                resultado
-            } else {
-                null
-            }
         }
+
+        // 2. Si hay consulta de referencia estándar, buscar en repositorios/fuentes
+        if (refABuscar.isNotBlank()) {
+            val referencia = ReferenceParser.parse(refABuscar)
+            if (referencia == null) {
+                errorParsing = true
+            } else {
+                errorParsing = false
+                fuentesConsulta.forEach { fuente ->
+                    val txt = EntradasStore.obtenerTexto(context, fuente.id, referencia.display())
+                    if (txt != null) {
+                        listaResultados.add(
+                            VerseResult(
+                                fuenteId = fuente.id,
+                                fuenteNombre = fuente.nombre,
+                                referencia = referencia.display(),
+                                texto = txt,
+                                disponible = true,
+                                nota = "Entrada agregada por ti."
+                            )
+                        )
+                    } else {
+                        val res = fuente.buscar(referencia)
+                        if (res != null && res.disponible && !res.texto.isNullOrBlank()) {
+                            listaResultados.add(res)
+                        }
+                    }
+                }
+            }
+        } else {
+            errorParsing = false
+        }
+
+        resultados = listaResultados
     }
 
-    fun ejecutarBusqueda() {
-        if (consulta.isBlank()) {
-            resultados = emptyList()
-            errorParsing = false
-            return
-        }
-
-        val referencia = ReferenceParser.parse(consulta)
-
-        if (referencia == null) {
-            errorParsing = true
-            resultados = emptyList()
-        } else {
-            errorParsing = false
-            resultados = fuentesConsulta.mapNotNull { fuente ->
-                buscarEnFuente(fuente, referencia)
-            }
-        }
+    LaunchedEffect(Unit) {
+        cargarEntradas()
     }
 
     fun abrirEdicion(
@@ -110,22 +123,22 @@ fun ConsultaGlobalScreen(
 
     if (edicionActual != null) {
         PantallaEdicionGlobal(
-            fuenteIdInicial = edicionActual.fuenteId,
             referenciaInicial = edicionActual.referenciaInicial,
             textoInicial = edicionActual.textoInicial,
             permiteEliminar = !edicionActual.esNueva,
             onVolver = {
                 modoEdicion = null
             },
-            onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
-                EntradasStore.guardar(context, fuenteId, referenciaTexto, textoEntrada)
+            onGuardar = { referenciaTexto, textoEntrada ->
+                EntradasStore.guardar(context, edicionActual.fuenteId, referenciaTexto, textoEntrada)
                 modoEdicion = null
-                ejecutarBusqueda()
+                consulta = referenciaTexto
+                cargarEntradas()
             },
             onEliminar = {
                 EntradasStore.eliminar(context, edicionActual.fuenteId, edicionActual.referenciaInicial)
                 modoEdicion = null
-                ejecutarBusqueda()
+                cargarEntradas()
             }
         )
         return
@@ -145,9 +158,8 @@ fun ConsultaGlobalScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    val primeraFuente = fuentesConsulta.firstOrNull()?.id ?: ""
                     abrirEdicion(
-                        fuenteId = primeraFuente,
+                        fuenteId = ID_FUENTE_GLOBAL,
                         referencia = consulta,
                         texto = "",
                         esNueva = true
@@ -182,7 +194,7 @@ fun ConsultaGlobalScreen(
             )
             Spacer(modifier = Modifier.height(10.dp))
 
-            Button(onClick = { ejecutarBusqueda() }) {
+            Button(onClick = { cargarEntradas() }) {
                 Text("Buscar")
             }
             Spacer(modifier = Modifier.height(20.dp))
@@ -204,7 +216,7 @@ fun ConsultaGlobalScreen(
 
             if (resultados.isEmpty()) {
                 Text(
-                    text = if (consulta.isBlank()) "Ingresa una referencia para buscar." else "No hay entradas disponibles para esta consulta.",
+                    text = "No hay entradas disponibles para esta consulta.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -281,21 +293,16 @@ private fun ResultadoGlobalCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaEdicionGlobal(
-    fuenteIdInicial: String,
     referenciaInicial: String,
     textoInicial: String,
     permiteEliminar: Boolean,
     onVolver: () -> Unit,
-    onGuardar: (fuenteId: String, referenciaTexto: String, textoEntrada: String) -> Unit,
+    onGuardar: (referenciaTexto: String, textoEntrada: String) -> Unit,
     onEliminar: () -> Unit
 ) {
-    val fuentes = SourceRegistry.todas
-    var fuenteSeleccionada by remember { mutableStateOf(fuenteIdInicial) }
     var referenciaTexto by remember { mutableStateOf(referenciaInicial) }
     var textoEntrada by remember { mutableStateOf(textoInicial) }
-
     var menuAbierto by remember { mutableStateOf(false) }
-    var menuFuenteExpandido by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -313,8 +320,8 @@ private fun PantallaEdicionGlobal(
                 actions = {
                     IconButton(
                         onClick = {
-                            if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
-                                onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
+                            if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                                onGuardar(referenciaTexto.trim(), textoEntrada)
                             }
                         }
                     ) {
@@ -333,8 +340,8 @@ private fun PantallaEdicionGlobal(
                             text = { Text("Guardar") },
                             onClick = {
                                 menuAbierto = false
-                                if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
-                                    onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
+                                if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                                    onGuardar(referenciaTexto.trim(), textoEntrada)
                                 }
                             }
                         )
@@ -342,7 +349,6 @@ private fun PantallaEdicionGlobal(
                         DropdownMenuItem(
                             text = { Text("Deshacer cambios") },
                             onClick = {
-                                fuenteSeleccionada = fuenteIdInicial
                                 referenciaTexto = referenciaInicial
                                 textoEntrada = textoInicial
                                 menuAbierto = false
@@ -372,37 +378,6 @@ private fun PantallaEdicionGlobal(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            ExposedDropdownMenuBox(
-                expanded = menuFuenteExpandido,
-                onExpandedChange = { menuFuenteExpandido = !menuFuenteExpandido }
-            ) {
-                val nombreFuente = fuentes.find { it.id == fuenteSeleccionada }?.nombre ?: "Seleccionar fuente"
-                OutlinedTextField(
-                    value = nombreFuente,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Fuente") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuFuenteExpandido) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = menuFuenteExpandido,
-                    onDismissRequest = { menuFuenteExpandido = false }
-                ) {
-                    fuentes.forEach { fuente ->
-                        DropdownMenuItem(
-                            text = { Text(fuente.nombre) },
-                            onClick = {
-                                fuenteSeleccionada = fuente.id
-                                menuFuenteExpandido = false
-                            }
-                        )
-                    }
-                }
-            }
-
             OutlinedTextField(
                 value = referenciaTexto,
                 onValueChange = { referenciaTexto = it },
@@ -430,8 +405,8 @@ private fun PantallaEdicionGlobal(
                 Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = {
-                        if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
-                            onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
+                        if (referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                            onGuardar(referenciaTexto.trim(), textoEntrada)
                         }
                     }
                 ) {
