@@ -328,7 +328,7 @@ private fun FilaEntrada(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PantallaEdicionEntrada(
+fun PantallaEdicionEntrada(
     referenciaInicial: String,
     textoInicial: String,
     permiteEliminar: Boolean,
