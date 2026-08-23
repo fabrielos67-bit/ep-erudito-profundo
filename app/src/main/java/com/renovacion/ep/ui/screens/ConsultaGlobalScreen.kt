@@ -42,7 +42,6 @@ fun ConsultaGlobalScreen(
     var modoEdicion by remember { mutableStateOf<ModoEdicionGlobal?>(null) }
 
     val fuentesConsulta = SourceRegistry.todas
-    var buscado by remember { mutableStateOf(false) }
 
     fun buscarEnFuente(
         fuente: TextSource,
@@ -64,24 +63,59 @@ fun ConsultaGlobalScreen(
                 nota = "Entrada agregada por ti."
             )
         } else {
-            fuente.buscar(referencia)
+            val resultado = fuente.buscar(referencia)
+            // Solo devolver resultados si están marcados como disponibles y tienen texto
+            if (resultado != null && resultado.disponible && !resultado.texto.isNullOrBlank()) {
+                resultado
+            } else {
+                null
+            }
         }
     }
 
     fun ejecutarBusqueda() {
+        if (consulta.isBlank()) {
+            // Si la consulta está vacía, buscar entradas personalizadas en todas las fuentes
+            val creadas = mutableListOf<VerseResult>()
+            fuentesConsulta.forEach { fuente ->
+                val claves = EntradasStore.obtenerTodasLasReferencias(context, fuente.id)
+                claves.forEach { refStr ->
+                    val texto = EntradasStore.obtenerTexto(context, fuente.id, refStr)
+                    if (texto != null) {
+                        creadas.add(
+                            VerseResult(
+                                fuenteId = fuente.id,
+                                fuenteNombre = fuente.nombre,
+                                referencia = refStr,
+                                texto = texto,
+                                disponible = true,
+                                nota = "Entrada agregada por ti."
+                            )
+                        )
+                    }
+                }
+            }
+            resultados = creadas
+            errorParsing = false
+            return
+        }
+
         val referencia = ReferenceParser.parse(consulta)
 
         if (referencia == null) {
             errorParsing = true
             resultados = emptyList()
-            buscado = false
         } else {
             errorParsing = false
             resultados = fuentesConsulta.mapNotNull { fuente ->
                 buscarEnFuente(fuente, referencia)
             }
-            buscado = true
         }
+    }
+
+    // Al cargar por primera vez la pantalla, cargar las entradas existentes
+    LaunchedEffect(Unit) {
+        ejecutarBusqueda()
     }
 
     fun abrirEdicion(
@@ -112,16 +146,12 @@ fun ConsultaGlobalScreen(
             onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
                 EntradasStore.guardar(context, fuenteId, referenciaTexto, textoEntrada)
                 modoEdicion = null
-                if (consulta.isNotBlank()) {
-                    ejecutarBusqueda()
-                }
+                ejecutarBusqueda()
             },
             onEliminar = {
                 EntradasStore.eliminar(context, edicionActual.fuenteId, edicionActual.referenciaInicial)
                 modoEdicion = null
-                if (consulta.isNotBlank()) {
-                    ejecutarBusqueda()
-                }
+                ejecutarBusqueda()
             }
         )
         return
@@ -191,43 +221,41 @@ fun ConsultaGlobalScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            if (buscado) {
-                Text(
-                    text = "Resultados en ${resultados.size} fuente(s):",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Resultados (${resultados.size}):",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(10.dp))
 
-                if (resultados.isEmpty()) {
-                    Text(
-                        text = "No hay resultados disponibles.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            items = resultados,
-                            key = { "${it.fuenteId}:${it.referencia}" }
-                        ) { resultado ->
-                            ResultadoGlobalCard(
-                                resultado = resultado,
-                                onClick = {
-                                    if (resultado.texto != null && resultado.disponible) {
-                                        abrirEdicion(
-                                            fuenteId = resultado.fuenteId,
-                                            referencia = resultado.referencia,
-                                            texto = resultado.texto,
-                                            esNueva = false
-                                        )
-                                    }
+            if (resultados.isEmpty()) {
+                Text(
+                    text = "No hay entradas disponibles.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = resultados,
+                        key = { "${it.fuenteId}:${it.referencia}" }
+                    ) { resultado ->
+                        ResultadoGlobalCard(
+                            resultado = resultado,
+                            onClick = {
+                                if (resultado.texto != null && resultado.disponible) {
+                                    abrirEdicion(
+                                        fuenteId = resultado.fuenteId,
+                                        referencia = resultado.referencia,
+                                        texto = resultado.texto,
+                                        esNueva = false
+                                    )
                                 }
-                            )
-                        }
+                            }
+                        )
                     }
                 }
             }
@@ -259,18 +287,10 @@ private fun ResultadoGlobalCard(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (resultado.disponible && resultado.texto != null) {
-                Text(
-                    text = resultado.texto,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            } else {
-                Text(
-                    text = "No disponible en ${resultado.fuenteNombre}.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = resultado.texto ?: "",
+                style = MaterialTheme.typography.bodyLarge
+            )
 
             resultado.nota?.let {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -378,7 +398,6 @@ private fun PantallaEdicionGlobal(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Desplegable de Fuente fluido (sin recuadro tosco)
             ExposedDropdownMenuBox(
                 expanded = menuFuenteExpandido,
                 onExpandedChange = { menuFuenteExpandido = !menuFuenteExpandido }
@@ -424,8 +443,7 @@ private fun PantallaEdicionGlobal(
                 label = { Text("Texto") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .heightIn(min = 250.dp)
+                    .heightIn(min = 200.dp)
             )
 
             Row(
