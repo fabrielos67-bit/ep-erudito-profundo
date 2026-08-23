@@ -51,37 +51,11 @@ fun ConsultaGlobalScreen(
         mutableStateOf(false)
     }
 
-    var mostrarDialogo by remember {
-        mutableStateOf(false)
-    }
-
-    var modoEdicion by remember {
-        mutableStateOf<ModoEdicionGlobal?>(null)
-    }
-
-    /*
-     * Consulta Global trabaja solamente con fuentes textuales.
-     *
-     * Cada fuente sigue siendo independiente:
-     * - sus entradas pertenecen a su propio fuenteId
-     * - sus entradas ocultas pertenecen a su propio fuenteId
-     * - no copiamos entradas entre módulos
-     */
-    val fuentesConsulta = remember {
-        SourceRegistry.todas.filter {
-            it.id != "investigacion_personal"
-        }
-    }
-
     fun buscarEnFuente(
         fuente: TextSource,
-        referencia: com.renovacion.ep.core.Reference
+        referencia: Reference
     ): VerseResult? {
 
-        /*
-         * Una entrada ocultada en ESTE módulo no debe aparecer
-         * en Consulta Global.
-         */
         if (
             EntradasStore.estaOculta(
                 context,
@@ -91,6 +65,47 @@ fun ConsultaGlobalScreen(
         ) {
             return null
         }
+
+        val textoGuardado =
+            EntradasStore.obtenerTexto(
+                context,
+                fuente.id,
+                referencia.display()
+            )
+
+        return if (textoGuardado != null) {
+
+            VerseResult(
+                fuenteId = fuente.id,
+                fuenteNombre = fuente.nombre,
+                referencia = referencia.display(),
+                texto = textoGuardado,
+                disponible = true,
+                nota = "Entrada agregada por ti."
+            )
+
+        } else {
+
+            fuente.buscar(referencia)
+        }
+    }        /*
+         * Una entrada ocultada en ESTE módulo no debe aparecer
+         * en Consulta Global.
+         */
+        if (
+                        resultados =
+                SourceRegistry.todas
+                    .filter {
+                        it.id != "investigacion_personal"
+                    }
+                    .mapNotNull { fuente ->
+                        buscarEnFuente(
+                            fuente,
+                            referencia
+                        )
+                    }
+
+            buscado = true
 
         /*
          * Primero buscamos una entrada personalizada que
