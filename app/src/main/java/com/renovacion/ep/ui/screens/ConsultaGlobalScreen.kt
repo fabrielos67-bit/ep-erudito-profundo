@@ -1,3 +1,5 @@
+package com.renovacion.ep.ui.screens
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,11 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.renovacion.ep.core.EntradasStore
+import com.renovacion.ep.core.Reference
 import com.renovacion.ep.core.ReferenceParser
 import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.TextSource
 import com.renovacion.ep.core.VerseResult
-import com.renovacion.ep.core.Reference
 
 private data class ModoEdicionGlobal(
     val fuenteId: String,
@@ -248,6 +250,95 @@ fun ConsultaGlobalScreen(
             }
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DialogoNuevaEntradaConFuente(
+    onCancelar: () -> Unit,
+    onGuardar: (fuenteId: String, referenciaTexto: String, textoEntrada: String) -> Unit
+) {
+    val fuentes = SourceRegistry.todas
+    var fuenteSeleccionada by remember { mutableStateOf(fuentes.firstOrNull()?.id ?: "") }
+    var referenciaTexto by remember { mutableStateOf("") }
+    var textoEntrada by remember { mutableStateOf("") }
+    var menuFuenteExpandido by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = { Text("Nueva Entrada") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ExposedDropdownMenuBox(
+                    expanded = menuFuenteExpandido,
+                    onExpandedChange = { menuFuenteExpandido = !menuFuenteExpandido }
+                ) {
+                    val nombreFuente = fuentes.find { it.id == fuenteSeleccionada }?.nombre ?: "Seleccionar fuente"
+                    OutlinedTextField(
+                        value = nombreFuente,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Fuente") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuFuenteExpandido) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = menuFuenteExpandido,
+                        onDismissRequest = { menuFuenteExpandido = false }
+                    ) {
+                        fuentes.forEach { fuente ->
+                            DropdownMenuItem(
+                                text = { Text(fuente.nombre) },
+                                onClick = {
+                                    fuenteSeleccionada = fuente.id
+                                    menuFuenteExpandido = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = referenciaTexto,
+                    onValueChange = { referenciaTexto = it },
+                    label = { Text("Referencia (ej. Mateo 24:36)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = textoEntrada,
+                    onValueChange = { textoEntrada = it },
+                    label = { Text("Texto") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 120.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (fuenteSeleccionada.isNotBlank() && referenciaTexto.isNotBlank() && textoEntrada.isNotBlank()) {
+                        onGuardar(fuenteSeleccionada, referenciaTexto.trim(), textoEntrada)
+                    }
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable
