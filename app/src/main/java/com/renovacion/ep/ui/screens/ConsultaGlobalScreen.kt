@@ -395,19 +395,12 @@ fun ConsultaGlobalScreen(
                 mostrarDialogo = false
             },
 
-            onGuardar = { fuenteId, referenciaTexto, textoEntrada ->
-
-                EntradasStore.guardar(
-                    context,
-                    fuenteId,
-                    referenciaTexto,
-                    textoEntrada
-                )
-
-                mostrarDialogo = false
-
-                if (consulta.isNotBlank()) {
-                    ejecutarBusqueda()
+            398:27 Cannot infer a type...
+398:37 Cannot infer a type...
+398:54 Cannot infer a type...
+401:21 Unresolved reference: context
+407:17 Unresolved reference: mostrarDialogo
+409:21 Unresolved reference: consulta                    ejecutarBusqueda()
                 }
             }
         )
@@ -685,7 +678,7 @@ private fun PantallaEdicionGlobal(
             ) {
 
                 TextButton(
-                    onClick = onCancelar
+                    onClick = onVolver
                 ) {
                     Text("Cancelar")
                 }
