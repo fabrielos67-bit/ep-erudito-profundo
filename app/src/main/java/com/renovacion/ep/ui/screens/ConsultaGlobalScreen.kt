@@ -35,7 +35,10 @@ private data class ModoEdicionGlobal(
     val esNueva: Boolean
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class
+)
 @Composable
 fun ConsultaGlobalScreen(
     onVolver: () -> Unit
