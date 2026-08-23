@@ -1,21 +1,39 @@
 package com.renovacion.ep.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.renovacion.ep.core.EntradasStore
+import com.renovacion.ep.core.Reference
 import com.renovacion.ep.core.ReferenceParser
 import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.TextSource
 import com.renovacion.ep.core.VerseResult
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+
+private data class ModoEdicionGlobal(
+    val fuenteId: String,
+    val referenciaInicial: String,
+    val textoInicial: String,
+    val esNueva: Boolean
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,35 +42,37 @@ fun ConsultaGlobalScreen(
 ) {
     val context = LocalContext.current
 
-    var consulta by remember { mutableStateOf("") }
+    var consulta by remember {
+        mutableStateOf("")
+    }
+
     var resultados by remember {
         mutableStateOf<List<VerseResult>>(emptyList())
     }
+
     var errorParsing by remember {
         mutableStateOf(false)
     }
+
     var buscado by remember {
         mutableStateOf(false)
     }
 
     var modoEdicion by remember {
-        mutableStateOf<ModoEdicion?>(null)
-    }
-
-    var mostrarSelectorFuente by remember {
-        mutableStateOf(false)
+        mutableStateOf<ModoEdicionGlobal?>(null)
     }
 
     fun buscarEnFuente(
         fuente: TextSource,
-        referencia: com.renovacion.ep.core.Reference
+        referencia: Reference
     ): VerseResult {
 
-        val textoGuardado = EntradasStore.obtenerTexto(
-            context,
-            fuente.id,
-            referencia.display()
-        )
+        val textoGuardado =
+            EntradasStore.obtenerTexto(
+                context,
+                fuente.id,
+                referencia.display()
+            )
 
         return if (textoGuardado != null) {
 
@@ -73,7 +93,8 @@ fun ConsultaGlobalScreen(
 
     fun ejecutarBusqueda() {
 
-        val referencia = ReferenceParser.parse(consulta)
+        val referencia =
+            ReferenceParser.parse(consulta)
 
         if (referencia == null) {
 
@@ -85,12 +106,12 @@ fun ConsultaGlobalScreen(
 
             errorParsing = false
 
-            resultados = SourceRegistry.todas
-                .map {
-                    buscarEnFuente(it, referencia)
-                }
-                .filter {
-                    it.disponible
+            resultados =
+                SourceRegistry.todas.map { fuente ->
+                    buscarEnFuente(
+                        fuente,
+                        referencia
+                    )
                 }
 
             buscado = true
@@ -99,70 +120,57 @@ fun ConsultaGlobalScreen(
 
     val edicionActual = modoEdicion
 
-    /*
-     * IMPORTANTE:
-     * Consulta Global utiliza exactamente el mismo editor
-     * que utilizan los demás módulos.
-     */
     if (edicionActual != null) {
 
-        val fuente = SourceRegistry.porId(
-            edicionActual.fuenteId
+        EditorEntradaGlobal(
+            fuenteId = edicionActual.fuenteId,
+            referenciaInicial =
+                edicionActual.referenciaInicial,
+            textoInicial =
+                edicionActual.textoInicial,
+            esNueva =
+                edicionActual.esNueva,
+
+            onVolver = {
+                modoEdicion = null
+            },
+
+            onGuardar = {
+                fuenteId,
+                referencia,
+                texto ->
+
+                EntradasStore.guardar(
+                    context,
+                    fuenteId,
+                    referencia,
+                    texto
+                )
+
+                modoEdicion = null
+
+                if (consulta.isNotBlank()) {
+                    ejecutarBusqueda()
+                }
+            },
+
+            onEliminar = {
+
+                EntradasStore.eliminar(
+                    context,
+                    edicionActual.fuenteId,
+                    edicionActual.referenciaInicial
+                )
+
+                modoEdicion = null
+
+                if (consulta.isNotBlank()) {
+                    ejecutarBusqueda()
+                }
+            }
         )
 
-        if (fuente != null) {
-
-            PantallaEdicionEntrada(
-
-                referenciaInicial =
-                    edicionActual.referenciaInicial,
-
-                textoInicial =
-                    edicionActual.textoInicial,
-
-                permiteEliminar =
-                    !edicionActual.esNueva,
-
-                onVolver = {
-                    modoEdicion = null
-                },
-
-                onGuardar = {
-                    referenciaTexto,
-                    textoEntrada ->
-
-                    EntradasStore.guardar(
-                        context,
-                        fuente.id,
-                        referenciaTexto,
-                        textoEntrada
-                    )
-
-                    modoEdicion = null
-
-                    if (consulta.isNotBlank()) {
-                        ejecutarBusqueda()
-                    }
-                },
-
-                onEliminar = {
-
-                    EntradasStore.eliminar(
-                        context,
-                        fuente.id,
-                        edicionActual.referenciaInicial
-                    )
-
-                    modoEdicion = null
-
-                    if (consulta.isNotBlank()) {
-                        ejecutarBusqueda()
-                    }
-                }
-            )
-
-            return
-        }
+        return
     }
 
     Scaffold(
@@ -195,7 +203,20 @@ fun ConsultaGlobalScreen(
             FloatingActionButton(
 
                 onClick = {
-                    mostrarSelectorFuente = true
+
+                    val fuente =
+                        SourceRegistry.todas.firstOrNull()
+
+                    if (fuente != null) {
+
+                        modoEdicion =
+                            ModoEdicionGlobal(
+                                fuenteId = fuente.id,
+                                referenciaInicial = "",
+                                textoInicial = "",
+                                esNueva = true
+                            )
+                    }
                 }
 
             ) {
@@ -215,15 +236,15 @@ fun ConsultaGlobalScreen(
                 .padding(padding)
                 .padding(20.dp)
                 .fillMaxSize()
-                .verticalScroll(
-                    rememberScrollState()
-                )
         ) {
 
             Text(
-                text = "Busca una referencia bíblica en todas las fuentes registradas.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text =
+                    "Busca una referencia bíblica en todas las fuentes registradas.",
+                style =
+                    MaterialTheme.typography.bodyMedium,
+                color =
+                    MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(
@@ -235,6 +256,7 @@ fun ConsultaGlobalScreen(
                 value = consulta,
 
                 onValueChange = {
+
                     consulta = it
                     errorParsing = false
                 },
@@ -245,7 +267,10 @@ fun ConsultaGlobalScreen(
                     )
                 },
 
-                modifier = Modifier.fillMaxWidth()
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                singleLine = true
             )
 
             Spacer(
@@ -257,6 +282,7 @@ fun ConsultaGlobalScreen(
                     ejecutarBusqueda()
                 }
             ) {
+
                 Text("Buscar")
             }
 
@@ -274,6 +300,10 @@ fun ConsultaGlobalScreen(
                     color =
                         MaterialTheme.colorScheme.error
                 )
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
             }
 
             if (buscado) {
@@ -290,92 +320,453 @@ fun ConsultaGlobalScreen(
                 )
 
                 Spacer(
-                    modifier = Modifier.height(10.dp)
+                    modifier = Modifier.height(12.dp)
                 )
 
-                resultados.forEach { resultado ->
+                Column(
 
-                    ResultadoCard(resultado)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(
+                                rememberScrollState()
+                            ),
 
-                    Spacer(
-                        modifier = Modifier.height(12.dp)
+                    verticalArrangement =
+                        Arrangement.spacedBy(12.dp)
+                ) {
+
+                    resultados.forEach { resultado ->
+
+                        ResultadoCardGlobal(
+                            resultado = resultado,
+
+                            onEditar = {
+
+                                modoEdicion =
+                                    ModoEdicionGlobal(
+                                        fuenteId =
+                                            resultado.fuenteId,
+
+                                        referenciaInicial =
+                                            resultado.referencia,
+
+                                        textoInicial =
+                                            resultado.texto
+                                                ?: "",
+
+                                        esNueva = false
+                                    )
+                            }
+                        )
+                    }
+                }
+
+            } else {
+
+                Column(
+
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(
+                                rememberScrollState()
+                            )
+                ) {
+
+                    Text(
+                        text =
+                            "Consulta Global permite buscar " +
+                            "la misma referencia en todas las fuentes.",
+
+                        style =
+                            MaterialTheme.typography.bodyLarge,
+
+                        color =
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+        }
+    }
+}
 
-            Spacer(
-                modifier = Modifier.height(80.dp)
-            )
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorEntradaGlobal(
+    fuenteId: String,
+    referenciaInicial: String,
+    textoInicial: String,
+    esNueva: Boolean,
+    onVolver: () -> Unit,
+    onGuardar: (
+        String,
+        String,
+        String
+    ) -> Unit,
+    onEliminar: () -> Unit
+) {
+    var referenciaTexto by remember {
+        mutableStateOf(referenciaInicial)
+    }
+
+    var textoEntrada by remember {
+        mutableStateOf(textoInicial)
+    }
+
+    var menuAbierto by remember {
+        mutableStateOf(false)
+    }
+
+    val fuente =
+        SourceRegistry.porId(fuenteId)
+
+    val scrollState =
+        rememberScrollState()
+
+    val focusRequester =
+        remember {
+            FocusRequester()
+        }
+
+    val bringIntoViewRequester =
+        remember {
+            BringIntoViewRequester()
+        }
+
+    val keyboardController =
+        LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+
+        delay(250)
+
+        focusRequester.requestFocus()
+
+        keyboardController?.show()
+    }
+
+    LaunchedEffect(textoEntrada) {
+
+        if (textoEntrada.isNotEmpty()) {
+
+            delay(30)
+
+            bringIntoViewRequester
+                .bringIntoView()
         }
     }
 
-    /*
-     * Selector de fuente solamente para una NUEVA entrada.
-     * Después de seleccionar la fuente se abre el mismo editor
-     * normal de los módulos.
-     */
-    if (mostrarSelectorFuente) {
+    Scaffold(
 
-        AlertDialog(
+        topBar = {
 
-            onDismissRequest = {
-                mostrarSelectorFuente = false
-            },
+            TopAppBar(
 
-            title = {
-                Text("Seleccionar fuente")
-            },
+                title = {
 
-            text = {
+                    Text(
+                        if (esNueva)
+                            "Nueva entrada"
+                        else
+                            "Editar entrada"
+                    )
+                },
 
-                Column {
+                navigationIcon = {
 
-                    SourceRegistry.todas.forEach { fuente ->
+                    IconButton(
+                        onClick = onVolver
+                    ) {
 
-                        TextButton(
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+
+                actions = {
+
+                    IconButton(
+
+                        onClick = {
+
+                            if (
+                                referenciaTexto.isNotBlank() &&
+                                textoEntrada.isNotBlank()
+                            ) {
+
+                                onGuardar(
+                                    fuenteId,
+                                    referenciaTexto.trim(),
+                                    textoEntrada
+                                )
+                            }
+                        }
+
+                    ) {
+
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = "Guardar"
+                        )
+                    }
+
+                    IconButton(
+
+                        onClick = {
+                            menuAbierto = true
+                        }
+
+                    ) {
+
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "Más opciones"
+                        )
+                    }
+
+                    DropdownMenu(
+
+                        expanded = menuAbierto,
+
+                        onDismissRequest = {
+                            menuAbierto = false
+                        }
+
+                    ) {
+
+                        DropdownMenuItem(
+
+                            text = {
+                                Text("Deshacer cambios")
+                            },
 
                             onClick = {
 
-                                mostrarSelectorFuente = false
+                                referenciaTexto =
+                                    referenciaInicial
 
-                                modoEdicion =
-                                    ModoEdicion(
+                                textoEntrada =
+                                    textoInicial
 
-                                        referenciaInicial =
-                                            consulta,
+                                menuAbierto = false
+                            }
+                        )
 
-                                        textoInicial = "",
+                        if (!esNueva) {
 
-                                        esNueva = true
-                                    )
+                            DropdownMenuItem(
 
-                                fuenteSeleccionadaTemporal =
-                                    fuente.id
-                            },
+                                text = {
+                                    Text("Eliminar")
+                                },
 
-                            modifier =
-                                Modifier.fillMaxWidth()
+                                onClick = {
 
-                        ) {
-
-                            Text(
-                                text = fuente.nombre
+                                    menuAbierto = false
+                                    onEliminar()
+                                }
                             )
                         }
                     }
                 }
-            },
+            )
+        }
 
-            confirmButton = {
+    ) { padding ->
 
-                TextButton(
-                    onClick = {
-                        mostrarSelectorFuente = false
-                    }
-                ) {
-                    Text("Cancelar")
-                }
+        Column(
+
+            modifier =
+                Modifier
+                    .padding(padding)
+                    .padding(20.dp)
+                    .fillMaxSize()
+                    .imePadding()
+                    .verticalScroll(scrollState)
+        ) {
+
+            Text(
+                text =
+                    fuente?.nombre
+                        ?: "Fuente no encontrada",
+
+                style =
+                    MaterialTheme.typography.titleMedium,
+
+                color =
+                    MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
+
+            OutlinedTextField(
+
+                value = referenciaTexto,
+
+                onValueChange = {
+                    referenciaTexto = it
+                },
+
+                label = {
+                    Text(
+                        "Referencia (p. ej. Mateo 24:36)"
+                    )
+                },
+
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .focusRequester(
+                            if (esNueva)
+                                focusRequester
+                            else
+                                FocusRequester.Default
+                        ),
+
+                singleLine = true
+            )
+
+            Spacer(
+                modifier = Modifier.height(16.dp)
+            )
+
+            OutlinedTextField(
+
+                value = textoEntrada,
+
+                onValueChange = {
+                    textoEntrada = it
+                },
+
+                label = {
+                    Text("Texto")
+                },
+
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(
+                            bringIntoViewRequester
+                        ),
+
+                minLines = 12
+            )
+
+            Spacer(
+                modifier = Modifier.height(30.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResultadoCardGlobal(
+    resultado: VerseResult,
+    onEditar: () -> Unit
+) {
+    Card(
+
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClick = onEditar
+                )
+    ) {
+
+        Column(
+            modifier =
+                Modifier.padding(16.dp)
+        ) {
+
+            Text(
+                text = resultado.fuenteNombre,
+
+                style =
+                    MaterialTheme.typography.titleMedium,
+
+                color =
+                    MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
+
+            Text(
+                text = resultado.referencia,
+
+                style =
+                    MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(
+                modifier = Modifier.height(8.dp)
+            )
+
+            if (
+                resultado.disponible &&
+                resultado.texto != null
+            ) {
+
+                Text(
+                    text = resultado.texto,
+
+                    style =
+                        MaterialTheme.typography.bodyLarge
+                )
+
+            } else {
+
+                Text(
+                    text =
+                        "No disponible en ${resultado.fuenteNombre}.",
+
+                    style =
+                        MaterialTheme.typography.bodyLarge,
+
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-        )
+
+            resultado.nota?.let { nota ->
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                Text(
+                    text = nota,
+
+                    style =
+                        MaterialTheme.typography.bodyMedium,
+
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.height(8.dp)
+            )
+
+            Text(
+                text = "Toca para editar",
+
+                style =
+                    MaterialTheme.typography.labelMedium,
+
+                color =
+                    MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
