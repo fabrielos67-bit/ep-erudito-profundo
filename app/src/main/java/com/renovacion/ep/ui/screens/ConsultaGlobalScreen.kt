@@ -20,7 +20,7 @@ import com.renovacion.ep.core.ReferenceParser
 import com.renovacion.ep.core.SourceRegistry
 import com.renovacion.ep.core.TextSource
 import com.renovacion.ep.core.VerseResult
-
+import com.renovacion.ep.core.Reference
 private data class ModoEdicionGlobal(
     val fuenteId: String,
     val referenciaInicial: String,
@@ -46,12 +46,84 @@ fun ConsultaGlobalScreen(
     var errorParsing by remember {
         mutableStateOf(false)
     }
+var mostrarDialogo by remember {
+    mutableStateOf(false)
+}
 
+var modoEdicion by remember {
+    mutableStateOf<ModoEdicionGlobal?>(null)
+}
+
+val fuentesConsulta = SourceRegistry.todas
     var buscado by remember {
         mutableStateOf(false)
     }
 
     fun buscarEnFuente(
+    fuente: TextSource,
+    referencia: Reference
+): VerseResult? {
+
+    if (
+        EntradasStore.estaOculta(
+            context,
+            fuente.id,
+            referencia.display()
+        )
+    ) {
+        return null
+    }
+
+    val textoGuardado =
+        EntradasStore.obtenerTexto(
+            context,
+            fuente.id,
+            referencia.display()
+        )
+
+    return if (textoGuardado != null) {
+
+        VerseResult(
+            fuenteId = fuente.id,
+            fuenteNombre = fuente.nombre,
+            referencia = referencia.display(),
+            texto = textoGuardado,
+            disponible = true,
+            nota = "Entrada agregada por ti."
+        )
+
+    } else {
+
+        fuente.buscar(referencia)
+    }
+}
+
+fun ejecutarBusqueda() {
+
+    val referencia = ReferenceParser.parse(consulta)
+
+    if (referencia == null) {
+
+        errorParsing = true
+        resultados = emptyList()
+        buscado = false
+
+    } else {
+
+        errorParsing = false
+
+        resultados = fuentesConsulta
+            .mapNotNull { fuente ->
+
+                buscarEnFuente(
+                    fuente,
+                    referencia
+                )
+            }
+
+        buscado = true
+    }
+}
         fuente: TextSource,
         referencia: Reference
     ): VerseResult? {
