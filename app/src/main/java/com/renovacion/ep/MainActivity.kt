@@ -21,9 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.renovacion.ep.ui.navigation.MainDrawerLayout
-import com.renovacion.ep.ui.navigation.ModuloApp
-import com.renovacion.ep.ui.theme.EPEruditoProfundoTheme
 
 private data class NotaKeepModelo(
     val id: String,
@@ -36,21 +33,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            EPEruditoProfundoTheme {
+            MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    var moduloActual by remember { mutableStateOf(ModuloApp.NOTAS) }
-
-                    MainDrawerLayout(
-                        moduloActual = moduloActual,
-                        onSeleccionarModulo = { nuevoModulo ->
-                            moduloActual = nuevoModulo
-                        }
-                    ) { openDrawer ->
-                        PantallaNotasPrincipal(onOpenDrawer = openDrawer)
-                    }
+                    PantallaNotasPrincipal()
                 }
             }
         }
@@ -59,7 +47,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PantallaNotasPrincipal(onOpenDrawer: () -> Unit) {
+private fun PantallaNotasPrincipal() {
     var textoBusqueda by remember { mutableStateOf("") }
     
     val notasEjemplo = remember {
@@ -97,6 +85,7 @@ private fun PantallaNotasPrincipal(onOpenDrawer: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             
+            // Barra superior estilo Google Keep
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -109,7 +98,7 @@ private fun PantallaNotasPrincipal(onOpenDrawer: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 ) {
-                    IconButton(onClick = onOpenDrawer) {
+                    IconButton(onClick = {}) {
                         Icon(Icons.Default.Menu, contentDescription = "Menú", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     
@@ -138,6 +127,7 @@ private fun PantallaNotasPrincipal(onOpenDrawer: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Grilla con las tarjetas de notas
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
