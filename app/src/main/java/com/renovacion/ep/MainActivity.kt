@@ -85,7 +85,18 @@ private fun AppContenidoPrincipal() {
         ModoTema.OSCURO -> true
     }
 
-    val colorScheme = if (esOscuro) darkColorScheme() else lightColorScheme()
+    // Esquema de Colores Oscuro Nocturno (Negro Profundo / True Dark)
+    val darkProfundoColorScheme = darkColorScheme(
+        background = Color(0xFF000000),
+        surface = Color(0xFF121212),
+        surfaceContainer = Color(0xFF1A1A1A),
+        surfaceContainerHigh = Color(0xFF242424),
+        onBackground = Color(0xFFE0E0E0),
+        onSurface = Color(0xFFE0E0E0),
+        onSurfaceVariant = Color(0xFFB0B0B0)
+    )
+
+    val colorScheme = if (esOscuro) darkProfundoColorScheme else lightColorScheme()
 
     MaterialTheme(colorScheme = colorScheme) {
         Surface(
@@ -111,7 +122,6 @@ private fun AppConMenuLateral(
     var esVistaCuadricula by remember { mutableStateOf(true) }
     var mostrarVistaPreviaNota by remember { mutableStateOf(true) }
 
-    // Estado de Notas
     val listaNotas = remember {
         mutableStateListOf(
             NotaKeepModelo("1", "Mateo 24:36", "Pero del día y la hora nadie sabe, ni aun los ángeles de los cielos, sino sólo mi Padre."),
@@ -122,7 +132,6 @@ private fun AppConMenuLateral(
         )
     }
 
-    // Estado de Consultas Globales
     val listaConsultas = remember {
         mutableStateListOf(
             ConsultaModelo("1", "Parusía (παρουσία)", "Mateo 24:3", "Presencia, advenimiento o llegada de una personalidad ilustre o divina."),
@@ -131,7 +140,6 @@ private fun AppConMenuLateral(
         )
     }
 
-    // Fuentes / Enlaces
     val listaEnlaces = remember {
         mutableStateListOf(
             EnlaceModelo("1", "Codex Sinaiticus Online", "https://codexsinaiticus.org", "Manuscrito bíblico en griego más antiguo."),
@@ -144,7 +152,6 @@ private fun AppConMenuLateral(
         )
     }
 
-    // Marcadores
     val listaMarcadores = remember {
         mutableStateListOf(
             MarcadorModelo("1", "Romanos 8:28", "Estudio sobre la Soberanía Divina"),
@@ -212,7 +219,7 @@ private fun AppConMenuLateral(
                 ModalDrawerSheet {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "EP Erudito Profundo",
+                        text = "EPPR",
                         modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
@@ -273,7 +280,6 @@ private fun AppConMenuLateral(
     }
 }
 
-// Pantalla Principal de Notas
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaNotasPrincipal(
@@ -397,7 +403,6 @@ private fun PantallaNotasPrincipal(
     }
 }
 
-// Pantalla Edición/Creación de Nota Completa
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaEdicionNotaCompleta(
@@ -495,7 +500,6 @@ private fun PantallaEdicionNotaCompleta(
     }
 }
 
-// Módulo Consulta Global - Lista
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaConsultaGlobal(
@@ -601,7 +605,6 @@ private fun PantallaConsultaGlobal(
     }
 }
 
-// Edición / Creación de Consulta Global en PANTALLA COMPLETA
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaEdicionConsultaCompleta(
@@ -691,7 +694,6 @@ private fun PantallaEdicionConsultaCompleta(
     }
 }
 
-// Módulo de Biblioteca de Fuentes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaEnlacesFuentes(
@@ -820,7 +822,6 @@ private fun DialogoEnlace(
     )
 }
 
-// Módulo de Marcadores
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaMarcadores(
@@ -864,7 +865,6 @@ private fun PantallaMarcadores(
     }
 }
 
-// Pantalla de Ajustes Completa Estilo Google Keep
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaAjustesCompleta(
@@ -897,7 +897,6 @@ private fun PantallaAjustesCompleta(
             Text("Opciones de Visualización", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Opción Modo Oscuro
             Text("Tema de la Aplicación", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Row(
                 modifier = Modifier
@@ -918,7 +917,7 @@ private fun PantallaAjustesCompleta(
                 FilterChip(
                     selected = modoTema == ModoTema.OSCURO,
                     onClick = { onCambiarTema(ModoTema.OSCURO) },
-                    label = { Text("Oscuro") }
+                    label = { Text("Oscuro Nocturno") }
                 )
             }
 
@@ -929,7 +928,6 @@ private fun PantallaAjustesCompleta(
             Text("Preferencias de Notas", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Switch Vista Cuadrícula o Lista
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -947,7 +945,6 @@ private fun PantallaAjustesCompleta(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Switch Vista Previa
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -969,7 +966,7 @@ private fun PantallaAjustesCompleta(
 
             Text("Acerca de", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("EP Erudito Profundo - Versión 1.0", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("EPPR - Versión 1.0", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Text("Plataforma de estudio, notas teológicas y consulta léxica integrada.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
