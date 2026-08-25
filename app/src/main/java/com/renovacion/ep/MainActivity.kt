@@ -43,17 +43,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val esOscuro = isSystemInDarkTheme()
-            val colorScheme = if (esOscuro) darkColorScheme() else lightColorScheme()
+            AppContenidoPrincipal()
+        }
+    }
+}
 
-            MaterialTheme(colorScheme = colorScheme) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    AppConMenuLateral(esOscuro = esOscuro)
-                }
-            }
+@Composable
+private fun AppContenidoPrincipal() {
+    val esOscuro = isSystemInDarkTheme()
+    val colorScheme = if (esOscuro) darkColorScheme() else lightColorScheme()
+
+    MaterialTheme(colorScheme = colorScheme) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            AppConMenuLateral(esOscuro = esOscuro)
         }
     }
 }
@@ -146,7 +151,6 @@ private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) 
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Barra superior estilo Google Keep con botón de menú operativo
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -188,7 +192,6 @@ private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) 
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Grilla de tarjetas adaptables a modo oscuro / claro
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
