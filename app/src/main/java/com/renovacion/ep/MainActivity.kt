@@ -27,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Stroke
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -132,7 +132,7 @@ private fun PantallaSplashMinimalista() {
             )
 
             drawCircle(color = primaryGreen, radius = 12f, center = Offset(75f, 38f))
-            drawCircle(color = goldColor, radius = 4f, center = Offset(76f, 36f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
+            drawCircle(color = goldColor, radius = 4f, center = Offset(76f, 36f), style = Stroke(width = 2f))
             drawLine(color = deskColor, start = Offset(10f, 65f), end = Offset(90f, 65f), strokeWidth = 4f)
             drawRect(color = Color.White, topLeft = Offset(35f, 52f), size = androidx.compose.ui.geometry.Size(30f, 12f))
             drawLine(color = bookColor, start = Offset(50f, 52f), end = Offset(50f, 64f), strokeWidth = 2f)
@@ -843,7 +843,7 @@ private fun PantallaEnlacesFuentes(
                             try {
                                 uriHandler.openUri(enlace.url)
                             } catch (e: Exception) {
-                                // Manejo defensivo en caso de URL mal formateada
+                                // Evita cierres si la URL no es válida
                             }
                         }
                 ) {
