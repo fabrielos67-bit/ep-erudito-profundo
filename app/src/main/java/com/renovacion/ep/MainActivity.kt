@@ -97,7 +97,7 @@ private fun PantallaKeepDirecta(onOpenDrawer: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Barra superior de búsqueda estilo Keep
+            // Barra superior estilo Google Keep
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,7 +139,7 @@ private fun PantallaKeepDirecta(onOpenDrawer: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Cuadrícula de tarjetas estilo Keep
+            // Cuadrícula de notas estilo Keep
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
