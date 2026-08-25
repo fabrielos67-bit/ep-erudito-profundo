@@ -3,11 +3,16 @@ package com.renovacion.ep
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -26,17 +31,23 @@ import kotlinx.coroutines.launch
 enum class ModuloApp(val titulo: String, val icono: ImageVector) {
     NOTAS("Notas", Icons.Default.Edit),
     CONSULTA_GLOBAL("Consulta Global", Icons.Default.Search),
-    FUENTES("Biblioteca de Fuentes", Icons.Default.List),
+    FUENTES("Biblioteca de Fuentes (Enlaces)", Icons.Default.List),
     MARCADORES("Marcadores", Icons.Default.Star),
     CONFIGURACION("Ajustes", Icons.Default.Settings)
 }
 
-private data class NotaKeepModelo(
+data class NotaKeepModelo(
     val id: String,
     val titulo: String,
     val contenido: String,
     val colorLight: Color,
     val colorDark: Color
+)
+
+data class EnlaceModelo(
+    val id: String,
+    val titulo: String,
+    val url: String
 )
 
 class MainActivity : ComponentActivity() {
@@ -68,6 +79,26 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var moduloActual by remember { mutableStateOf(ModuloApp.NOTAS) }
+
+    // Estado global de notas
+    val listaNotas = remember {
+        mutableStateListOf(
+            NotaKeepModelo("1", "Mateo 24:36", "Pero del día y la hora nadie sabe, ni aun los ángeles de los cielos, sino sólo mi Padre.", Color(0xFFFFF4B8), Color(0xFF4A441D)),
+            NotaKeepModelo("2", "Idea de Estudio", "Revisar los términos en griego para 'Parusía' en las notas de consulta.", Color(0xFFE6F4EA), Color(0xFF1E3A29)),
+            NotaKeepModelo("3", "Juan 1:1", "En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios.", Color(0xFFE8F0FE), Color(0xFF1D2F4A)),
+            NotaKeepModelo("4", "Génesis 1:1", "En el principio creó Dios los cielos y la tierra.", Color(0xFFF3E8FD), Color(0xFF38214A)),
+            NotaKeepModelo("5", "Recordatorio", "Agregar referencias faltantes del manuscrito Masorético.", Color(0xFFFCE8E6), Color(0xFF4A2121))
+        )
+    }
+
+    // Estado global de fuentes / enlaces
+    val listaEnlaces = remember {
+        mutableStateListOf(
+            EnlaceModelo("1", "Codex Sinaiticus", "https://codexsinaiticus.org"),
+            EnlaceModelo("2", "Blue Letter Bible", "https://www.blueletterbible.org"),
+            EnlaceModelo("3", "SELA Greek Interlinear", "https://es.stepbible.org")
+        )
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -101,6 +132,11 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
         when (moduloActual) {
             ModuloApp.NOTAS -> PantallaNotasPrincipal(
                 esOscuro = esOscuro,
+                listaNotas = listaNotas,
+                onOpenDrawer = { scope.launch { drawerState.open() } }
+            )
+            ModuloApp.FUENTES -> PantallaEnlacesFuentes(
+                listaEnlaces = listaEnlaces,
                 onOpenDrawer = { scope.launch { drawerState.open() } }
             )
             else -> PantallaModuloGenerico(
@@ -113,20 +149,16 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) {
+private fun PantallaNotasPrincipal(
+    esOscuro: Boolean,
+    listaNotas: MutableList<NotaKeepModelo>,
+    onOpenDrawer: () -> Unit
+) {
     var textoBusqueda by remember { mutableStateOf("") }
-    
-    val notasEjemplo = remember {
-        listOf(
-            NotaKeepModelo("1", "Mateo 24:36", "Pero del día y la hora nadie sabe, ni aun los ángeles de los cielos, sino sólo mi Padre.", Color(0xFFFFF4B8), Color(0xFF4A441D)),
-            NotaKeepModelo("2", "Idea de Estudio", "Revisar los términos en griego para 'Parusía' en las notas de consulta.", Color(0xFFE6F4EA), Color(0xFF1E3A29)),
-            NotaKeepModelo("3", "Juan 1:1", "En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios.", Color(0xFFE8F0FE), Color(0xFF1D2F4A)),
-            NotaKeepModelo("4", "Génesis 1:1", "En el principio creó Dios los cielos y la tierra.", Color(0xFFF3E8FD), Color(0xFF38214A)),
-            NotaKeepModelo("5", "Recordatorio", "Agregar referencias faltantes del manuscrito Masorético.", Color(0xFFFCE8E6), Color(0xFF4A2121))
-        )
-    }
+    var mostrarDialogoCrear by remember { mutableStateOf(false) }
+    var notaSeleccionadaParaEditar by remember { mutableStateOf<NotaKeepModelo?>(null) }
 
-    val notasFiltradas = notasEjemplo.filter {
+    val notasFiltradas = listaNotas.filter {
         it.titulo.contains(textoBusqueda, ignoreCase = true) ||
         it.contenido.contains(textoBusqueda, ignoreCase = true)
     }
@@ -134,7 +166,7 @@ private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {},
+                onClick = { mostrarDialogoCrear = true },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 shape = RoundedCornerShape(16.dp)
@@ -151,6 +183,7 @@ private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) 
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             
+            // Barra superior de búsqueda
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -192,6 +225,7 @@ private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) 
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Grilla de Notas
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -206,7 +240,8 @@ private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) 
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp)),
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { notaSeleccionadaParaEditar = nota },
                         colors = CardDefaults.cardColors(containerColor = colorTarjeta)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -228,6 +263,278 @@ private fun PantallaNotasPrincipal(esOscuro: Boolean, onOpenDrawer: () -> Unit) 
             }
         }
     }
+
+    // Modal Crear Nueva Nota
+    if (mostrarDialogoCrear) {
+        DialogoNota(
+            notaInicial = null,
+            onDismiss = { mostrarDialogoCrear = false },
+            onGuardar = { nuevaNota ->
+                listaNotas.add(0, nuevaNota)
+                mostrarDialogoCrear = false
+            },
+            onEliminar = null
+        )
+    }
+
+    // Modal Editar/Eliminar Nota Existente
+    notaSeleccionadaParaEditar?.let { nota ->
+        DialogoNota(
+            notaInicial = nota,
+            onDismiss = { notaSeleccionadaParaEditar = null },
+            onGuardar = { notaEditada ->
+                val index = listaNotas.indexOfFirst { it.id == nota.id }
+                if (index != -1) listaNotas[index] = notaEditada
+                notaSeleccionadaParaEditar = null
+            },
+            onEliminar = {
+                listaNotas.removeAll { it.id == nota.id }
+                notaSeleccionadaParaEditar = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun DialogoNota(
+    notaInicial: NotaKeepModelo?,
+    onDismiss: () -> Unit,
+    onGuardar: (NotaKeepModelo) -> Unit,
+    onEliminar: (() -> Unit)?
+) {
+    var titulo by remember { mutableStateOf(notaInicial?.titulo ?: "") }
+    var contenido by remember { mutableStateOf(notaInicial?.contenido ?: "") }
+    var colorLightSeleccionado by remember { mutableStateOf(notaInicial?.colorLight ?: Color(0xFFFFF4B8)) }
+    var colorDarkSeleccionado by remember { mutableStateOf(notaInicial?.colorDark ?: Color(0xFF4A441D)) }
+
+    val paletaColores = listOf(
+        Pair(Color(0xFFFFF4B8), Color(0xFF4A441D)),
+        Pair(Color(0xFFE6F4EA), Color(0xFF1E3A29)),
+        Pair(Color(0xFFE8F0FE), Color(0xFF1D2F4A)),
+        Pair(Color(0xFFF3E8FD), Color(0xFF38214A)),
+        Pair(Color(0xFFFCE8E6), Color(0xFF4A2121))
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (notaInicial == null) "Nueva Nota" else "Editar Nota") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = titulo,
+                    onValueChange = { titulo = it },
+                    label = { Text("Título") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = contenido,
+                    onValueChange = { contenido = it },
+                    label = { Text("Contenido / Nota") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    maxLines = 5
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Color de nota:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    paletaColores.forEach { (cLight, cDark) ->
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(cLight)
+                                .clickable {
+                                    colorLightSeleccionado = cLight
+                                    colorDarkSeleccionado = cDark
+                                }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (titulo.isNotBlank() || contenido.isNotBlank()) {
+                        onGuardar(
+                            NotaKeepModelo(
+                                id = notaInicial?.id ?: System.currentTimeMillis().toString(),
+                                titulo = titulo,
+                                contenido = contenido,
+                                colorLight = colorLightSeleccionado,
+                                colorDark = colorDarkSeleccionado
+                            )
+                        )
+                    }
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            Row {
+                if (onEliminar != null) {
+                    IconButton(onClick = onEliminar) {
+                        Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar")
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PantallaEnlacesFuentes(
+    listaEnlaces: MutableList<EnlaceModelo>,
+    onOpenDrawer: () -> Unit
+) {
+    var mostrarDialogoCrear by remember { mutableStateOf(false) }
+    var enlaceEditar by remember { mutableStateOf<EnlaceModelo?>(null) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Biblioteca de Fuentes") },
+                navigationIcon = {
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menú")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { mostrarDialogoCrear = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Agregar Enlace")
+            }
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(listaEnlaces) { enlace ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { enlaceEditar = enlace }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = enlace.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(text = enlace.url, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+
+    if (mostrarDialogoCrear) {
+        DialogoEnlace(
+            enlaceInicial = null,
+            onDismiss = { mostrarDialogoCrear = false },
+            onGuardar = { nuevo ->
+                listaEnlaces.add(0, nuevo)
+                mostrarDialogoCrear = false
+            },
+            onEliminar = null
+        )
+    }
+
+    enlaceEditar?.let { enlace ->
+        DialogoEnlace(
+            enlaceInicial = enlace,
+            onDismiss = { enlaceEditar = null },
+            onGuardar = { editado ->
+                val index = listaEnlaces.indexOfFirst { it.id == enlace.id }
+                if (index != -1) listaEnlaces[index] = editado
+                enlaceEditar = null
+            },
+            onEliminar = {
+                listaEnlaces.removeAll { it.id == enlace.id }
+                enlaceEditar = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun DialogoEnlace(
+    enlaceInicial: EnlaceModelo?,
+    onDismiss: () -> Unit,
+    onGuardar: (EnlaceModelo) -> Unit,
+    onEliminar: (() -> Unit)?
+) {
+    var titulo by remember { mutableStateOf(enlaceInicial?.titulo ?: "") }
+    var url by remember { mutableStateOf(enlaceInicial?.url ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (enlaceInicial == null) "Nuevo Enlace / Fuente" else "Editar Enlace") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = titulo,
+                    onValueChange = { titulo = it },
+                    label = { Text("Nombre de la fuente") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("URL (https://...)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (titulo.isNotBlank() && url.isNotBlank()) {
+                        onGuardar(
+                            EnlaceModelo(
+                                id = enlaceInicial?.id ?: System.currentTimeMillis().toString(),
+                                titulo = titulo,
+                                url = url
+                            )
+                        )
+                    }
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            Row {
+                if (onEliminar != null) {
+                    IconButton(onClick = onEliminar) {
+                        Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar")
+                }
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
