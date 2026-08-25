@@ -3,7 +3,6 @@ package com.renovacion.ep
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -12,7 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -40,8 +38,14 @@ data class NotaKeepModelo(
     val id: String,
     val titulo: String,
     val contenido: String,
-    val colorLight: Color,
-    val colorDark: Color
+    val colorPersonalizado: Color? = null
+)
+
+data class ConsultaModelo(
+    val id: String,
+    val termino: String,
+    val definicion: String,
+    val pasajeReferencia: String
 )
 
 data class EnlaceModelo(
@@ -88,31 +92,40 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
     var moduloActual by remember { mutableStateOf(ModuloApp.NOTAS) }
     var esVistaCuadricula by remember { mutableStateOf(true) }
 
-    // Lista de Notas Originales
+    // Notas con color neutro por defecto
     val listaNotas = remember {
         mutableStateListOf(
-            NotaKeepModelo("1", "Mateo 24:36", "Pero del día y la hora nadie sabe, ni aun los ángeles de los cielos, sino sólo mi Padre.", Color(0xFFFFF4B8), Color(0xFF4A441D)),
-            NotaKeepModelo("2", "Idea de Estudio", "Revisar los términos en griego para 'Parusía' en las notas de consulta.", Color(0xFFE6F4EA), Color(0xFF1E3A29)),
-            NotaKeepModelo("3", "Juan 1:1", "En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios.", Color(0xFFE8F0FE), Color(0xFF1D2F4A)),
-            NotaKeepModelo("4", "Génesis 1:1", "En el principio creó Dios los cielos y la tierra.", Color(0xFFF3E8FD), Color(0xFF38214A)),
-            NotaKeepModelo("5", "Recordatorio", "Agregar referencias faltantes del manuscrito Masorético.", Color(0xFFFCE8E6), Color(0xFF4A2121))
+            NotaKeepModelo("1", "Mateo 24:36", "Pero del día y la hora nadie sabe, ni aun los ángeles de los cielos, sino sólo mi Padre."),
+            NotaKeepModelo("2", "Idea de Estudio", "Revisar los términos en griego para 'Parusía' en las notas de consulta."),
+            NotaKeepModelo("3", "Juan 1:1", "En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios."),
+            NotaKeepModelo("4", "Génesis 1:1", "En el principio creó Dios los cielos y la tierra."),
+            NotaKeepModelo("5", "Recordatorio", "Agregar referencias faltantes del manuscrito Masorético.")
         )
     }
 
-    // Restauración de Fuentes / Enlaces del Proyecto Original
+    // Datos para Consulta Global
+    val listaConsultas = remember {
+        mutableStateListOf(
+            ConsultaModelo("1", "Parusía (παρουσία)", "Presencia, advenimiento o llegada de una personalidad ilustre o divina.", "Mateo 24:3"),
+            ConsultaModelo("2", "Logos (λόγος)", "Palabra, expresión, discurso o razón divina encarnada.", "Juan 1:1"),
+            ConsultaModelo("3", "Kenosis (κένωσις)", "El acto de despojarse o vaciarse a sí mismo voluntariamente.", "Filipenses 2:7")
+        )
+    }
+
+    // Fuentes / Enlaces
     val listaEnlaces = remember {
         mutableStateListOf(
             EnlaceModelo("1", "Codex Sinaiticus Online", "https://codexsinaiticus.org", "Manuscrito bíblico en griego más antiguo."),
             EnlaceModelo("2", "STEP Bible", "https://es.stepbible.org", "Herramienta de análisis interlineal y vocabulario original."),
             EnlaceModelo("3", "Blue Letter Bible", "https://www.blueletterbible.org", "Concordancias Strong, léxicos y comentarios."),
             EnlaceModelo("4", "Perseus Digital Library", "http://www.perseus.tufts.edu", "Textos clásicos y léxicos Liddell-Scott / Short."),
-            EnlaceModelo("5", "Septuaginta LXX (Academic Biblical)", "https://www.academic-bible.com", "Texto crítico de la traducción griega del AT."),
-            EnlaceModelo("6", "Textus Receptus - Scrivener 1894", "https://tr.org.uk", "Base textual del Nuevo Testamento tradicional."),
+            EnlaceModelo("5", "Septuaginta LXX", "https://www.academic-bible.com", "Texto crítico de la traducción griega del AT."),
+            EnlaceModelo("6", "Textus Receptus", "https://tr.org.uk", "Base textual del Nuevo Testamento tradicional."),
             EnlaceModelo("7", "Biblioteca Apostólica Vaticana", "https://www.vaticanlibrary.va", "Manuscritos antiguos y códices digitalizados.")
         )
     }
 
-    // Marcadores Restaurados
+    // Marcadores
     val listaMarcadores = remember {
         mutableStateListOf(
             MarcadorModelo("1", "Romanos 8:28", "Estudio sobre la Soberanía Divina"),
@@ -121,15 +134,14 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
         )
     }
 
-    var notaEnEdicionPantallaCompleta by remember { mutableStateOf<NotaKeepModelo?>(null) }
+    var notaEnEdicion by remember { mutableStateOf<NotaKeepModelo?>(null) }
     var esNuevaNota by remember { mutableStateOf(false) }
 
-    if (notaEnEdicionPantallaCompleta != null || esNuevaNota) {
+    if (notaEnEdicion != null || esNuevaNota) {
         PantallaEdicionNotaCompleta(
-            notaInicial = notaEnEdicionPantallaCompleta,
-            esOscuro = esOscuro,
+            notaInicial = notaEnEdicion,
             onVolver = {
-                notaEnEdicionPantallaCompleta = null
+                notaEnEdicion = null
                 esNuevaNota = false
             },
             onGuardar = { notaGuardada ->
@@ -139,14 +151,12 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
                     val index = listaNotas.indexOfFirst { it.id == notaGuardada.id }
                     if (index != -1) listaNotas[index] = notaGuardada
                 }
-                notaEnEdicionPantallaCompleta = null
+                notaEnEdicion = null
                 esNuevaNota = false
             },
             onEliminar = {
-                notaEnEdicionPantallaCompleta?.let { n ->
-                    listaNotas.removeAll { it.id == n.id }
-                }
-                notaEnEdicionPantallaCompleta = null
+                notaEnEdicion?.let { n -> listaNotas.removeAll { it.id == n.id } }
+                notaEnEdicion = null
                 esNuevaNota = false
             }
         )
@@ -182,13 +192,16 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
         ) {
             when (moduloActual) {
                 ModuloApp.NOTAS -> PantallaNotasPrincipal(
-                    esOscuro = esOscuro,
                     listaNotas = listaNotas,
                     esVistaCuadricula = esVistaCuadricula,
                     onToggleVista = { esVistaCuadricula = !esVistaCuadricula },
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onCrearNota = { esNuevaNota = true },
-                    onEditarNota = { notaEnEdicionPantallaCompleta = it }
+                    onEditarNota = { notaEnEdicion = it }
+                )
+                ModuloApp.CONSULTA_GLOBAL -> PantallaConsultaGlobal(
+                    listaConsultas = listaConsultas,
+                    onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
                 ModuloApp.FUENTES -> PantallaEnlacesFuentes(
                     listaEnlaces = listaEnlaces,
@@ -201,19 +214,15 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
                 ModuloApp.CONFIGURACION -> PantallaAjustes(
                     onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
-                else -> PantallaModuloGenerico(
-                    titulo = moduloActual.titulo,
-                    onOpenDrawer = { scope.launch { drawerState.open() } }
-                )
             }
         }
     }
 }
 
+// Pantalla Principal de Notas con Buscador visible y libre de bordes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaNotasPrincipal(
-    esOscuro: Boolean,
     listaNotas: List<NotaKeepModelo>,
     esVistaCuadricula: Boolean,
     onToggleVista: () -> Unit,
@@ -244,22 +253,23 @@ private fun PantallaNotasPrincipal(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 14.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            // Espacio superior para despejar el buscador
+            Spacer(modifier = Modifier.height(16.dp))
             
-            // Barra estilo Keep con conmutador Mosaico / Línea
+            // Barra de Búsqueda Centrada y Destacada
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(24.dp),
+                    .height(52.dp),
+                shape = RoundedCornerShape(26.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 2.dp
+                tonalElevation = 3.dp
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 4.dp)
+                    modifier = Modifier.padding(horizontal = 6.dp)
                 ) {
                     IconButton(onClick = onOpenDrawer) {
                         Icon(Icons.Default.Menu, contentDescription = "Menú", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -279,7 +289,6 @@ private fun PantallaNotasPrincipal(
                         singleLine = true
                     )
                     
-                    // Alternar Vista Cuadrícula / Lista
                     IconButton(onClick = onToggleVista) {
                         Icon(
                             imageVector = if (esVistaCuadricula) Icons.Default.List else Icons.Default.Menu,
@@ -301,29 +310,29 @@ private fun PantallaNotasPrincipal(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(notasFiltradas) { nota ->
-                    val colorTarjeta = if (esOscuro) nota.colorDark else nota.colorLight
-                    val colorTexto = if (esOscuro) Color.White else Color.Black
-                    val colorSubtexto = if (esOscuro) Color(0xFFE1E2E1) else Color(0xFF3C4043)
-
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { onEditarNota(nota) },
-                        colors = CardDefaults.cardColors(containerColor = colorTarjeta)
+                        colors = CardDefaults.cardColors(
+                            containerColor = nota.colorPersonalizado ?: MaterialTheme.colorScheme.surfaceContainer
+                        )
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = nota.titulo,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colorTexto
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            if (nota.titulo.isNotBlank()) {
+                                Text(
+                                    text = nota.titulo,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                            }
                             Text(
                                 text = nota.contenido,
                                 fontSize = 13.sp,
-                                color = colorSubtexto
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -333,27 +342,17 @@ private fun PantallaNotasPrincipal(
     }
 }
 
-// Pantalla Completa Adaptada a Modo Oscuro
+// Pantalla Edición/Creación con Tema Adaptable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaEdicionNotaCompleta(
     notaInicial: NotaKeepModelo?,
-    esOscuro: Boolean,
     onVolver: () -> Unit,
     onGuardar: (NotaKeepModelo) -> Unit,
     onEliminar: () -> Unit
 ) {
     var titulo by remember { mutableStateOf(notaInicial?.titulo ?: "") }
     var contenido by remember { mutableStateOf(notaInicial?.contenido ?: "") }
-    
-    val colorLightDefault = Color(0xFFFFF4B8)
-    val colorDarkDefault = Color(0xFF2C2C2C)
-
-    val fondoPantalla = if (esOscuro) {
-        notaInicial?.colorDark ?: colorDarkDefault
-    } else {
-        notaInicial?.colorLight ?: colorLightDefault
-    }
 
     Scaffold(
         topBar = {
@@ -377,9 +376,7 @@ private fun PantallaEdicionNotaCompleta(
                                     NotaKeepModelo(
                                         id = notaInicial?.id ?: System.currentTimeMillis().toString(),
                                         titulo = titulo,
-                                        contenido = contenido,
-                                        colorLight = notaInicial?.colorLight ?: colorLightDefault,
-                                        colorDark = notaInicial?.colorDark ?: colorDarkDefault
+                                        contenido = contenido
                                     )
                                 )
                             } else {
@@ -390,10 +387,10 @@ private fun PantallaEdicionNotaCompleta(
                         Icon(Icons.Default.Check, contentDescription = "Guardar")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = fondoPantalla)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = fondoPantalla
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -441,6 +438,174 @@ private fun PantallaEdicionNotaCompleta(
             )
         }
     }
+}
+
+// Módulo de Consulta Global
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PantallaConsultaGlobal(
+    listaConsultas: MutableList<ConsultaModelo>,
+    onOpenDrawer: () -> Unit
+) {
+    var textoBusqueda by remember { mutableStateOf("") }
+    var mostrarDialogoAgregar by remember { mutableStateOf(false) }
+
+    val consultasFiltradas = listaConsultas.filter {
+        it.termino.contains(textoBusqueda, ignoreCase = true) ||
+        it.definicion.contains(textoBusqueda, ignoreCase = true) ||
+        it.pasajeReferencia.contains(textoBusqueda, ignoreCase = true)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Consulta Global") },
+                navigationIcon = {
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menú")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { mostrarDialogoAgregar = true },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Agregar Consulta")
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            OutlinedTextField(
+                value = textoBusqueda,
+                onValueChange = { textoBusqueda = it },
+                label = { Text("Buscar términos o pasajes...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(consultasFiltradas) { consulta ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = consulta.termino,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer
+                                ) {
+                                    Text(
+                                        text = consulta.pasajeReferencia,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = consulta.definicion,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (mostrarDialogoAgregar) {
+        DialogoNuevaConsulta(
+            onDismiss = { mostrarDialogoAgregar = false },
+            onGuardar = { nueva ->
+                listaConsultas.add(0, nueva)
+                mostrarDialogoAgregar = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun DialogoNuevaConsulta(
+    onDismiss: () -> Unit,
+    onGuardar: (ConsultaModelo) -> Unit
+) {
+    var termino by remember { mutableStateOf("") }
+    var pasaje by remember { mutableStateOf("") }
+    var definicion by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nueva Consulta / Léxico") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = termino,
+                    onValueChange = { termino = it },
+                    label = { Text("Término o palabra clave") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = pasaje,
+                    onValueChange = { pasaje = it },
+                    label = { Text("Pasaje de referencia (Ej. Juan 1:1)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = definicion,
+                    onValueChange = { definicion = it },
+                    label = { Text("Definición o notas téologicas") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (termino.isNotBlank()) {
+                        onGuardar(
+                            ConsultaModelo(
+                                id = System.currentTimeMillis().toString(),
+                                termino = termino,
+                                pasajeReferencia = pasaje,
+                                definicion = definicion
+                            )
+                        )
+                    }
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
 }
 
 // Módulo de Biblioteca de Fuentes
@@ -616,18 +781,10 @@ private fun PantallaMarcadores(
     }
 }
 
-// Módulo de Ajustes Completo (Incluye Paleta de Colores)
+// Módulo de Ajustes Adaptado
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PantallaAjustes(onOpenDrawer: () -> Unit) {
-    val paletaColores = listOf(
-        Pair(Color(0xFFFFF4B8), Color(0xFF4A441D)),
-        Pair(Color(0xFFE6F4EA), Color(0xFF1E3A29)),
-        Pair(Color(0xFFE8F0FE), Color(0xFF1D2F4A)),
-        Pair(Color(0xFFF3E8FD), Color(0xFF38214A)),
-        Pair(Color(0xFFFCE8E6), Color(0xFF4A2121))
-    )
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -646,59 +803,37 @@ private fun PantallaAjustes(onOpenDrawer: () -> Unit) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            Text("Personalización", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Text("Apariencia y Tema", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(12.dp))
-
-            Text("Paleta de colores por defecto para tarjetas:", fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                paletaColores.forEach { (cLight, _) ->
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(cLight)
+            
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Tema del Sistema", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "La aplicación se adapta automáticamente al tema Claro u Oscuro seleccionado en los ajustes de tu dispositivo Android.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Text("Apariencia", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Modo Oscuro: Sincronizado automáticamente con el sistema Android", fontSize = 14.sp)
-        }
-    }
-}
+            Text("Preferencias de Notas", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(12.dp))
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PantallaModuloGenerico(titulo: String, onOpenDrawer: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(titulo) },
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menú")
-                    }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Color de Tarjetas por Defecto", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Formato neutro activado para integrarse perfectamente con el modo oscuro.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Módulo: $titulo",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            }
         }
     }
 }
