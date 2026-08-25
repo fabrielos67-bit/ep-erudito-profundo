@@ -4,6 +4,11 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -20,12 +25,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class ModuloApp(val titulo: String, val icono: ImageVector) {
@@ -78,6 +87,91 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppContenidoPrincipal() {
+    var mostrarSplash by remember { mutableStateOf(true) }
+
+    // Control de la Mini Intro (Splash Screen) con fondo negro puro
+    LaunchedEffect(key1 = true) {
+        delay(2200) // Duración de la intro en milisegundos
+        mostrarSplash = false
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        if (mostrarSplash) {
+            PantallaSplashMinimalista()
+        } else {
+            ContenidoAplicacionReal()
+        }
+    }
+}
+
+@Composable
+private fun PantallaSplashMinimalista() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize().background(Color.Black)
+    ) {
+        // Dibujo vectorial de la tortuga con lentes y libro en miniatura para la intro
+        Canvas(modifier = Modifier.size(100.dp)) {
+            val primaryGreen = Color(0xFF4CAF50)
+            val shellGreen = Color(0xFF2E7D32)
+            val goldColor = Color(0xFFFFD54F)
+            val deskColor = Color(0xFF8D6E63)
+            val bookColor = Color(0xFF1E88E5)
+
+            // Caparazón
+            drawArc(
+                color = shellGreen,
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = true,
+                size = androidx.compose.ui.geometry.Size(60f, 50f),
+                topLeft = Offset(20f, 25f)
+            )
+
+            // Cabeza
+            drawCircle(color = primaryGreen, radius = 12f, center = Offset(75f, 38f))
+
+            // Lentes
+            drawCircle(color = goldColor, radius = 4f, center = Offset(76f, 36f), style = Stroke(width = 2f))
+
+            // Escritorio
+            drawLine(color = deskColor, start = Offset(10f, 65f), end = Offset(90f, 65f), strokeWidth = 4f)
+
+            // Libro Abierto
+            drawRect(color = Color.White, topLeft = Offset(35f, 52f), size = androidx.compose.ui.geometry.Size(30f, 12f))
+            drawLine(color = bookColor, start = Offset(50f, 52f), end = Offset(50f, 64f), strokeWidth = 2f)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "EPPR",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            letterSpacing = 4.sp
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "DESCIFRANDO LAS ESCRITURAS",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Light,
+            color = Color(0xFFB0B0B0),
+            letterSpacing = 2.sp
+        )
+    }
+}
+
+@Composable
+private fun ContenidoAplicacionReal() {
     var modoTemaSeleccionado by remember { mutableStateOf(ModoTema.SISTEMA) }
     val sistemaEsOscuro = isSystemInDarkTheme()
 
@@ -124,7 +218,6 @@ private fun AppConMenuLateral(
     val scope = rememberCoroutineScope()
     var moduloActual by remember { mutableStateOf(ModuloApp.NOTAS) }
 
-    // Cargar y guardar automáticamente el estado de la vista en almacenamiento interno
     var esVistaCuadricula by remember {
         mutableStateOf(prefs.getBoolean("pref_vista_cuadricula", true))
     }
