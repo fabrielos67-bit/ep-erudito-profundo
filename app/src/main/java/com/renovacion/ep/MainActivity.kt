@@ -26,8 +26,8 @@ import kotlinx.coroutines.launch
 enum class ModuloApp(val titulo: String, val icono: ImageVector) {
     NOTAS("Notas", Icons.Default.Edit),
     CONSULTA_GLOBAL("Consulta Global", Icons.Default.Search),
-    FUENTES("Biblioteca de Fuentes", Icons.Default.Book),
-    MARCADORES("Marcadores", Icons.Default.Bookmark),
+    FUENTES("Biblioteca de Fuentes", Icons.Default.List),
+    MARCADORES("Marcadores", Icons.Default.Star),
     CONFIGURACION("Ajustes", Icons.Default.Settings)
 }
 
