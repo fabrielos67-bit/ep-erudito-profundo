@@ -27,10 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,9 +89,8 @@ class MainActivity : ComponentActivity() {
 private fun AppContenidoPrincipal() {
     var mostrarSplash by remember { mutableStateOf(true) }
 
-    // Control de la Mini Intro (Splash Screen) con fondo negro puro
     LaunchedEffect(key1 = true) {
-        delay(2200) // Duración de la intro en milisegundos
+        delay(2200)
         mostrarSplash = false
     }
 
@@ -116,7 +115,6 @@ private fun PantallaSplashMinimalista() {
         verticalArrangement = Arrangement.Center,
         modifier = Modifier.fillMaxSize().background(Color.Black)
     ) {
-        // Dibujo vectorial de la tortuga con lentes y libro en miniatura para la intro
         Canvas(modifier = Modifier.size(100.dp)) {
             val primaryGreen = Color(0xFF4CAF50)
             val shellGreen = Color(0xFF2E7D32)
@@ -124,7 +122,6 @@ private fun PantallaSplashMinimalista() {
             val deskColor = Color(0xFF8D6E63)
             val bookColor = Color(0xFF1E88E5)
 
-            // Caparazón
             drawArc(
                 color = shellGreen,
                 startAngle = 180f,
@@ -134,16 +131,9 @@ private fun PantallaSplashMinimalista() {
                 topLeft = Offset(20f, 25f)
             )
 
-            // Cabeza
             drawCircle(color = primaryGreen, radius = 12f, center = Offset(75f, 38f))
-
-            // Lentes
-            drawCircle(color = goldColor, radius = 4f, center = Offset(76f, 36f), style = Stroke(width = 2f))
-
-            // Escritorio
+            drawCircle(color = goldColor, radius = 4f, center = Offset(76f, 36f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
             drawLine(color = deskColor, start = Offset(10f, 65f), end = Offset(90f, 65f), strokeWidth = 4f)
-
-            // Libro Abierto
             drawRect(color = Color.White, topLeft = Offset(35f, 52f), size = androidx.compose.ui.geometry.Size(30f, 12f))
             drawLine(color = bookColor, start = Offset(50f, 52f), end = Offset(50f, 64f), strokeWidth = 2f)
         }
@@ -814,6 +804,7 @@ private fun PantallaEnlacesFuentes(
     onOpenDrawer: () -> Unit
 ) {
     var mostrarDialogoCrear by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
 
     Scaffold(
         topBar = {
@@ -844,7 +835,18 @@ private fun PantallaEnlacesFuentes(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(listaEnlaces) { enlace ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            try {
+                                uriHandler.openUri(enlace.url)
+                            } catch (e: Exception) {
+                                // Manejo defensivo en caso de URL mal formateada
+                            }
+                        }
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
