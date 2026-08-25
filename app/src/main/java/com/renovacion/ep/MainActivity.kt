@@ -96,53 +96,87 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
         mutableStateListOf(
             EnlaceModelo("1", "Codex Sinaiticus", "https://codexsinaiticus.org"),
             EnlaceModelo("2", "Blue Letter Bible", "https://www.blueletterbible.org"),
-            EnlaceModelo("3", "SELA Greek Interlinear", "https://es.stepbible.org")
+            EnlaceModelo("3", "STEP Bible", "https://es.stepbible.org")
         )
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "EP Erudito Profundo",
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                
-                ModuloApp.entries.forEach { modulo ->
-                    NavigationDrawerItem(
-                        icon = { Icon(modulo.icono, contentDescription = modulo.titulo) },
-                        label = { Text(modulo.titulo) },
-                        selected = moduloActual == modulo,
-                        onClick = {
-                            moduloActual = modulo
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+    // Pantalla completa para edición/creación de nota
+    var notaEnEdicionPantallaCompleta by remember { mutableStateOf<NotaKeepModelo?>(null) }
+    var esNuevaNota by remember { mutableStateOf(false) }
+
+    if (notaEnEdicionPantallaCompleta != null || esNuevaNota) {
+        PantallaEdicionNotaCompleta(
+            notaInicial = notaEnEdicionPantallaCompleta,
+            esOscuro = esOscuro,
+            onVolver = {
+                notaEnEdicionPantallaCompleta = null
+                esNuevaNota = false
+            },
+            onGuardar = { notaGuardada ->
+                if (esNuevaNota) {
+                    listaNotas.add(0, notaGuardada)
+                } else {
+                    val index = listaNotas.indexOfFirst { it.id == notaGuardada.id }
+                    if (index != -1) listaNotas[index] = notaGuardada
+                }
+                notaEnEdicionPantallaCompleta = null
+                esNuevaNota = false
+            },
+            onEliminar = {
+                notaEnEdicionPantallaCompleta?.let { n ->
+                    listaNotas.removeAll { it.id == n.id }
+                }
+                notaEnEdicionPantallaCompleta = null
+                esNuevaNota = false
+            }
+        )
+    } else {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "EP Erudito Profundo",
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    ModuloApp.entries.forEach { modulo ->
+                        NavigationDrawerItem(
+                            icon = { Icon(modulo.icono, contentDescription = modulo.titulo) },
+                            label = { Text(modulo.titulo) },
+                            selected = moduloActual == modulo,
+                            onClick = {
+                                moduloActual = modulo
+                                scope.launch { drawerState.close() }
+                            },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
                 }
             }
-        }
-    ) {
-        when (moduloActual) {
-            ModuloApp.NOTAS -> PantallaNotasPrincipal(
-                esOscuro = esOscuro,
-                listaNotas = listaNotas,
-                onOpenDrawer = { scope.launch { drawerState.open() } }
-            )
-            ModuloApp.FUENTES -> PantallaEnlacesFuentes(
-                listaEnlaces = listaEnlaces,
-                onOpenDrawer = { scope.launch { drawerState.open() } }
-            )
-            else -> PantallaModuloGenerico(
-                titulo = moduloActual.titulo,
-                onOpenDrawer = { scope.launch { drawerState.open() } }
-            )
+        ) {
+            when (moduloActual) {
+                ModuloApp.NOTAS -> PantallaNotasPrincipal(
+                    esOscuro = esOscuro,
+                    listaNotas = listaNotas,
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onCrearNota = { esNuevaNota = true },
+                    onEditarNota = { notaEnEdicionPantallaCompleta = it }
+                )
+                ModuloApp.FUENTES -> PantallaEnlacesFuentes(
+                    listaEnlaces = listaEnlaces,
+                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                )
+                else -> PantallaModuloGenerico(
+                    titulo = moduloActual.titulo,
+                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                )
+            }
         }
     }
 }
@@ -151,12 +185,12 @@ private fun AppConMenuLateral(esOscuro: Boolean) {
 @Composable
 private fun PantallaNotasPrincipal(
     esOscuro: Boolean,
-    listaNotas: MutableList<NotaKeepModelo>,
-    onOpenDrawer: () -> Unit
+    listaNotas: List<NotaKeepModelo>,
+    onOpenDrawer: () -> Unit,
+    onCrearNota: () -> Unit,
+    onEditarNota: (NotaKeepModelo) -> Unit
 ) {
     var textoBusqueda by remember { mutableStateOf("") }
-    var mostrarDialogoCrear by remember { mutableStateOf(false) }
-    var notaSeleccionadaParaEditar by remember { mutableStateOf<NotaKeepModelo?>(null) }
 
     val notasFiltradas = listaNotas.filter {
         it.titulo.contains(textoBusqueda, ignoreCase = true) ||
@@ -166,7 +200,7 @@ private fun PantallaNotasPrincipal(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { mostrarDialogoCrear = true },
+                onClick = onCrearNota,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 shape = RoundedCornerShape(16.dp)
@@ -183,7 +217,6 @@ private fun PantallaNotasPrincipal(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Barra superior de búsqueda
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -225,7 +258,6 @@ private fun PantallaNotasPrincipal(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Grilla de Notas
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -241,7 +273,7 @@ private fun PantallaNotasPrincipal(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable { notaSeleccionadaParaEditar = nota },
+                            .clickable { onEditarNota(nota) },
                         colors = CardDefaults.cardColors(containerColor = colorTarjeta)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -263,44 +295,17 @@ private fun PantallaNotasPrincipal(
             }
         }
     }
-
-    // Modal Crear Nueva Nota
-    if (mostrarDialogoCrear) {
-        DialogoNota(
-            notaInicial = null,
-            onDismiss = { mostrarDialogoCrear = false },
-            onGuardar = { nuevaNota ->
-                listaNotas.add(0, nuevaNota)
-                mostrarDialogoCrear = false
-            },
-            onEliminar = null
-        )
-    }
-
-    // Modal Editar/Eliminar Nota Existente
-    notaSeleccionadaParaEditar?.let { nota ->
-        DialogoNota(
-            notaInicial = nota,
-            onDismiss = { notaSeleccionadaParaEditar = null },
-            onGuardar = { notaEditada ->
-                val index = listaNotas.indexOfFirst { it.id == nota.id }
-                if (index != -1) listaNotas[index] = notaEditada
-                notaSeleccionadaParaEditar = null
-            },
-            onEliminar = {
-                listaNotas.removeAll { it.id == nota.id }
-                notaSeleccionadaParaEditar = null
-            }
-        )
-    }
 }
 
+// Pantalla completa para crear y editar entradas de notas
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DialogoNota(
+private fun PantallaEdicionNotaCompleta(
     notaInicial: NotaKeepModelo?,
-    onDismiss: () -> Unit,
+    esOscuro: Boolean,
+    onVolver: () -> Unit,
     onGuardar: (NotaKeepModelo) -> Unit,
-    onEliminar: (() -> Unit)?
+    onEliminar: () -> Unit
 ) {
     var titulo by remember { mutableStateOf(notaInicial?.titulo ?: "") }
     var contenido by remember { mutableStateOf(notaInicial?.contenido ?: "") }
@@ -315,78 +320,110 @@ private fun DialogoNota(
         Pair(Color(0xFFFCE8E6), Color(0xFF4A2121))
     )
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (notaInicial == null) "Nueva Nota" else "Editar Nota") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
-                    label = { Text("Título") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = contenido,
-                    onValueChange = { contenido = it },
-                    label = { Text("Contenido / Nota") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    maxLines = 5
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Color de nota:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    paletaColores.forEach { (cLight, cDark) ->
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(cLight)
-                                .clickable {
-                                    colorLightSeleccionado = cLight
-                                    colorDarkSeleccionado = cDark
-                                }
-                        )
+    val fondoPantalla = if (esOscuro) colorDarkSeleccionado else colorLightSeleccionado
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = onVolver) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
                     }
-                }
-            }
+                },
+                actions = {
+                    if (notaInicial != null) {
+                        IconButton(onClick = onEliminar) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar Nota", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+                            if (titulo.isNotBlank() || contenido.isNotBlank()) {
+                                onGuardar(
+                                    NotaKeepModelo(
+                                        id = notaInicial?.id ?: System.currentTimeMillis().toString(),
+                                        titulo = titulo,
+                                        contenido = contenido,
+                                        colorLight = colorLightSeleccionado,
+                                        colorDark = colorDarkSeleccionado
+                                    )
+                                )
+                            } else {
+                                onVolver()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = "Guardar")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = fondoPantalla)
+            )
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (titulo.isNotBlank() || contenido.isNotBlank()) {
-                        onGuardar(
-                            NotaKeepModelo(
-                                id = notaInicial?.id ?: System.currentTimeMillis().toString(),
-                                titulo = titulo,
-                                contenido = contenido,
-                                colorLight = colorLightSeleccionado,
-                                colorDark = colorDarkSeleccionado
-                            )
-                        )
-                    }
-                }
+        containerColor = fondoPantalla
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            TextField(
+                value = titulo,
+                onValueChange = { titulo = it },
+                placeholder = { Text("Título", fontSize = 22.sp, fontWeight = FontWeight.Bold) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TextField(
+                value = contenido,
+                onValueChange = { contenido = it },
+                placeholder = { Text("Escribe una nota...", fontSize = 16.sp) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                textStyle = LocalTextStyle.current.copy(fontSize = 16.sp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Selector de Color
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Guardar")
-            }
-        },
-        dismissButton = {
-            Row {
-                if (onEliminar != null) {
-                    IconButton(onClick = onEliminar) {
-                        Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
-                    }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("Cancelar")
+                Text("Color:", fontWeight = FontWeight.Medium)
+                paletaColores.forEach { (cLight, cDark) ->
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(cLight)
+                            .clickable {
+                                colorLightSeleccionado = cLight
+                                colorDarkSeleccionado = cDark
+                            }
+                    )
                 }
             }
         }
-    )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -410,36 +447,51 @@ private fun PantallaEnlacesFuentes(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { mostrarDialogoCrear = true }) {
+            FloatingActionButton(
+                onClick = { mostrarDialogoCrear = true },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar Enlace")
             }
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(listaEnlaces) { enlace ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { enlaceEditar = enlace }
-                ) {
-                    Row(
+        if (listaEnlaces.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay enlaces agregados. Toca el botón + para agregar uno.")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(listaEnlaces) { enlace ->
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .clickable { enlaceEditar = enlace }
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = enlace.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(text = enlace.url, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = enlace.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(text = enlace.url, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -487,7 +539,7 @@ private fun DialogoEnlace(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (enlaceInicial == null) "Nuevo Enlace / Fuente" else "Editar Enlace") },
+        title = { Text(if (enlaceInicial == null) "Agregar Nuevo Enlace / Fuente" else "Editar Enlace") },
         text = {
             Column {
                 OutlinedTextField(
