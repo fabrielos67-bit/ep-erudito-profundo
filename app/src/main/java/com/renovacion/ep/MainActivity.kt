@@ -1,5 +1,6 @@
 package com.renovacion.ep
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,7 +87,6 @@ private fun AppContenidoPrincipal() {
         ModoTema.OSCURO -> true
     }
 
-    // Esquema de Colores Oscuro Nocturno (Negro Profundo / True Dark)
     val darkProfundoColorScheme = darkColorScheme(
         background = Color(0xFF000000),
         surface = Color(0xFF121212),
@@ -116,11 +117,30 @@ private fun AppConMenuLateral(
     modoTema: ModoTema,
     onCambiarTema: (ModoTema) -> Unit
 ) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("eppr_prefs", Context.MODE_PRIVATE) }
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var moduloActual by remember { mutableStateOf(ModuloApp.NOTAS) }
-    var esVistaCuadricula by remember { mutableStateOf(true) }
-    var mostrarVistaPreviaNota by remember { mutableStateOf(true) }
+
+    // Cargar y guardar automáticamente el estado de la vista en almacenamiento interno
+    var esVistaCuadricula by remember {
+        mutableStateOf(prefs.getBoolean("pref_vista_cuadricula", true))
+    }
+    var mostrarVistaPreviaNota by remember {
+        mutableStateOf(prefs.getBoolean("pref_vista_previa", true))
+    }
+
+    val cambiarVistaCuadricula: (Boolean) -> Unit = { nuevaVista ->
+        esVistaCuadricula = nuevaVista
+        prefs.edit().putBoolean("pref_vista_cuadricula", nuevaVista).apply()
+    }
+
+    val cambiarVistaPrevia: (Boolean) -> Unit = { nuevaPrevia ->
+        mostrarVistaPreviaNota = nuevaPrevia
+        prefs.edit().putBoolean("pref_vista_previa", nuevaPrevia).apply()
+    }
 
     val listaNotas = remember {
         mutableStateListOf(
@@ -247,7 +267,7 @@ private fun AppConMenuLateral(
                     listaNotas = listaNotas,
                     esVistaCuadricula = esVistaCuadricula,
                     mostrarVistaPrevia = mostrarVistaPreviaNota,
-                    onToggleVista = { esVistaCuadricula = !esVistaCuadricula },
+                    onToggleVista = { cambiarVistaCuadricula(!esVistaCuadricula) },
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onCrearNota = { esNuevaNota = true },
                     onEditarNota = { notaEnEdicion = it }
@@ -270,9 +290,9 @@ private fun AppConMenuLateral(
                     modoTema = modoTema,
                     onCambiarTema = onCambiarTema,
                     esVistaCuadricula = esVistaCuadricula,
-                    onToggleVistaDefault = { esVistaCuadricula = it },
+                    onToggleVistaDefault = cambiarVistaCuadricula,
                     mostrarVistaPrevia = mostrarVistaPreviaNota,
-                    onToggleVistaPrevia = { mostrarVistaPreviaNota = it },
+                    onToggleVistaPrevia = cambiarVistaPrevia,
                     onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
             }
