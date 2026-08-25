@@ -49,7 +49,13 @@ class MainActivity : ComponentActivity() {
                             moduloActual = nuevoModulo
                         }
                     ) { openDrawer ->
-                        PantallaKeepDirecta(onOpenDrawer = openDrawer)
+                        when (moduloActual) {
+                            ModuloApp.NOTAS -> PantallaKeepDirecta(onOpenDrawer = openDrawer)
+                            ModuloApp.CONSULTA_GLOBAL -> PantallaModuloEnConstruccion("Consulta Global", openDrawer)
+                            ModuloApp.FUENTES -> PantallaModuloEnConstruccion("Biblioteca de Fuentes", openDrawer)
+                            ModuloApp.MARCADORES -> PantallaModuloEnConstruccion("Marcadores y Guardados", openDrawer)
+                            ModuloApp.CONFIGURACION -> PantallaModuloEnConstruccion("Ajustes de la Aplicación", openDrawer)
+                        }
                     }
                 }
             }
@@ -97,7 +103,7 @@ private fun PantallaKeepDirecta(onOpenDrawer: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Barra superior estilo Google Keep
+            // Barra de búsqueda flotante
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,7 +145,7 @@ private fun PantallaKeepDirecta(onOpenDrawer: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Cuadrícula de notas estilo Keep
+            // Cuadrícula de notas estilo Google Keep
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -171,5 +177,19 @@ private fun PantallaKeepDirecta(onOpenDrawer: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PantallaModuloEnConstruccion(nombreModulo: String, onOpenDrawer: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Módulo: $nombreModulo",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
