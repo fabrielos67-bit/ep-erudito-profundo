@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 enum class ModuloApp(val titulo: String, val icono: ImageVector) {
     NOTAS("Notas", Icons.Default.Edit),
@@ -255,13 +257,46 @@ private fun AppConMenuLateral(
         )
     }
 
+    // --- MARCADORES: ahora se cargan desde el teléfono (SharedPreferences) ---
     val listaMarcadores = remember {
-        mutableStateListOf(
-            MarcadorModelo("1", "Romanos 8:28", "Estudio sobre la Soberanía Divina"),
-            MarcadorModelo("2", "Hebreos 11:1", "Definición teológica de la Fe"),
-            MarcadorModelo("3", "Isaías 53:5", "Profecía mesiánica del Siervo Sufriente")
-        )
+        val marcadoresGuardados = mutableStateListOf<MarcadorModelo>()
+        val json = prefs.getString("marcadores_json", null)
+        if (json != null) {
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                marcadoresGuardados.add(
+                    MarcadorModelo(
+                        id = obj.getString("id"),
+                        pasaje = obj.getString("pasaje"),
+                        nota = obj.getString("nota")
+                    )
+                )
+            }
+        } else {
+            marcadoresGuardados.addAll(
+                listOf(
+                    MarcadorModelo("1", "Romanos 8:28", "Estudio sobre la Soberanía Divina"),
+                    MarcadorModelo("2", "Hebreos 11:1", "Definición teológica de la Fe"),
+                    MarcadorModelo("3", "Isaías 53:5", "Profecía mesiánica del Siervo Sufriente")
+                )
+            )
+        }
+        marcadoresGuardados
     }
+
+    fun guardarMarcadores() {
+        val array = JSONArray()
+        listaMarcadores.forEach { m ->
+            val obj = JSONObject()
+            obj.put("id", m.id)
+            obj.put("pasaje", m.pasaje)
+            obj.put("nota", m.nota)
+            array.put(obj)
+        }
+        prefs.edit().putString("marcadores_json", array.toString()).apply()
+    }
+    // --- FIN cambios de Marcadores ---
 
     var notaEnEdicion by remember { mutableStateOf<NotaKeepModelo?>(null) }
     var esNuevaNota by remember { mutableStateOf(false) }
@@ -367,7 +402,8 @@ private fun AppConMenuLateral(
                 )
                 ModuloApp.MARCADORES -> PantallaMarcadores(
                     listaMarcadores = listaMarcadores,
-                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onCambio = { guardarMarcadores() }
                 )
                 ModuloApp.CONFIGURACION -> PantallaAjustesCompleta(
                     modoTema = modoTema,
@@ -941,7 +977,8 @@ private fun DialogoEnlace(
 @Composable
 private fun PantallaMarcadores(
     listaMarcadores: MutableList<MarcadorModelo>,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    onCambio: () -> Unit
 ) {
     var marcadorEnEdicion by remember { mutableStateOf<MarcadorModelo?>(null) }
     var esNuevoMarcador by remember { mutableStateOf(false) }
@@ -960,11 +997,13 @@ private fun PantallaMarcadores(
                     val index = listaMarcadores.indexOfFirst { it.id == marcadorGuardado.id }
                     if (index != -1) listaMarcadores[index] = marcadorGuardado
                 }
+                onCambio()
                 marcadorEnEdicion = null
                 esNuevoMarcador = false
             },
             onEliminar = {
                 marcadorEnEdicion?.let { m -> listaMarcadores.removeAll { it.id == m.id } }
+                onCambio()
                 marcadorEnEdicion = null
                 esNuevoMarcador = false
             }
