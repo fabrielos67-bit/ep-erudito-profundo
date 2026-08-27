@@ -245,17 +245,52 @@ private fun AppConMenuLateral(
         )
     }
 
+    // --- FUENTES: ahora se cargan desde el teléfono (SharedPreferences) ---
     val listaEnlaces = remember {
-        mutableStateListOf(
-            EnlaceModelo("1", "Codex Sinaiticus Online", "https://codexsinaiticus.org", "Manuscrito bíblico en griego más antiguo."),
-            EnlaceModelo("2", "STEP Bible", "https://es.stepbible.org", "Herramienta de análisis interlineal y vocabulario original."),
-            EnlaceModelo("3", "Blue Letter Bible", "https://www.blueletterbible.org", "Concordancias Strong, léxicos y comentarios."),
-            EnlaceModelo("4", "Perseus Digital Library", "http://www.perseus.tufts.edu", "Textos clásicos y léxicos Liddell-Scott / Short."),
-            EnlaceModelo("5", "Septuaginta LXX", "https://www.academic-bible.com", "Texto crítico de la traducción griega del AT."),
-            EnlaceModelo("6", "Textus Receptus", "https://tr.org.uk", "Base textual del Nuevo Testamento tradicional."),
-            EnlaceModelo("7", "Biblioteca Apostólica Vaticana", "https://www.vaticanlibrary.va", "Manuscritos antiguos y códices digitalizados.")
-        )
+        val enlacesGuardados = mutableStateListOf<EnlaceModelo>()
+        val json = prefs.getString("enlaces_json", null)
+        if (json != null) {
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                enlacesGuardados.add(
+                    EnlaceModelo(
+                        id = obj.getString("id"),
+                        titulo = obj.getString("titulo"),
+                        url = obj.getString("url"),
+                        descripcion = obj.getString("descripcion")
+                    )
+                )
+            }
+        } else {
+            enlacesGuardados.addAll(
+                listOf(
+                    EnlaceModelo("1", "Codex Sinaiticus Online", "https://codexsinaiticus.org", "Manuscrito bíblico en griego más antiguo."),
+                    EnlaceModelo("2", "STEP Bible", "https://es.stepbible.org", "Herramienta de análisis interlineal y vocabulario original."),
+                    EnlaceModelo("3", "Blue Letter Bible", "https://www.blueletterbible.org", "Concordancias Strong, léxicos y comentarios."),
+                    EnlaceModelo("4", "Perseus Digital Library", "http://www.perseus.tufts.edu", "Textos clásicos y léxicos Liddell-Scott / Short."),
+                    EnlaceModelo("5", "Septuaginta LXX", "https://www.academic-bible.com", "Texto crítico de la traducción griega del AT."),
+                    EnlaceModelo("6", "Textus Receptus", "https://tr.org.uk", "Base textual del Nuevo Testamento tradicional."),
+                    EnlaceModelo("7", "Biblioteca Apostólica Vaticana", "https://www.vaticanlibrary.va", "Manuscritos antiguos y códices digitalizados.")
+                )
+            )
+        }
+        enlacesGuardados
     }
+
+    fun guardarEnlaces() {
+        val array = JSONArray()
+        listaEnlaces.forEach { e ->
+            val obj = JSONObject()
+            obj.put("id", e.id)
+            obj.put("titulo", e.titulo)
+            obj.put("url", e.url)
+            obj.put("descripcion", e.descripcion)
+            array.put(obj)
+        }
+        prefs.edit().putString("enlaces_json", array.toString()).apply()
+    }
+    // --- FIN cambios de Fuentes ---
 
     // --- MARCADORES: ahora se cargan desde el teléfono (SharedPreferences) ---
     val listaMarcadores = remember {
@@ -364,7 +399,7 @@ private fun AppConMenuLateral(
                         color = MaterialTheme.colorScheme.primary
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
+
                     ModuloApp.entries.forEach { modulo ->
                         NavigationDrawerItem(
                             icon = { Icon(modulo.icono, contentDescription = modulo.titulo) },
@@ -398,7 +433,8 @@ private fun AppConMenuLateral(
                 )
                 ModuloApp.FUENTES -> PantallaEnlacesFuentes(
                     listaEnlaces = listaEnlaces,
-                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onCambio = { guardarEnlaces() }
                 )
                 ModuloApp.MARCADORES -> PantallaMarcadores(
                     listaMarcadores = listaMarcadores,
@@ -456,7 +492,7 @@ private fun PantallaNotasPrincipal(
                 .padding(horizontal = 14.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -472,7 +508,7 @@ private fun PantallaNotasPrincipal(
                     IconButton(onClick = onOpenDrawer) {
                         Icon(Icons.Default.Menu, contentDescription = "Menú", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    
+
                     TextField(
                         value = textoBusqueda,
                         onValueChange = { textoBusqueda = it },
@@ -486,7 +522,7 @@ private fun PantallaNotasPrincipal(
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
-                    
+
                     IconButton(onClick = onToggleVista) {
                         Icon(
                             imageVector = if (esVistaCuadricula) Icons.Default.List else Icons.Default.Menu,
@@ -608,7 +644,7 @@ private fun PantallaEdicionNotaCompleta(
                     unfocusedIndicatorColor = Color.Transparent
                 ),
                 textStyle = LocalTextStyle.current.copy(
-                    fontSize = 22.sp, 
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 ),
@@ -837,140 +873,193 @@ private fun PantallaEdicionConsultaCompleta(
 @Composable
 private fun PantallaEnlacesFuentes(
     listaEnlaces: MutableList<EnlaceModelo>,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    onCambio: () -> Unit
 ) {
-    var mostrarDialogoCrear by remember { mutableStateOf(false) }
+    var enlaceEnEdicion by remember { mutableStateOf<EnlaceModelo?>(null) }
+    var esNuevoEnlace by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+
+    if (enlaceEnEdicion != null || esNuevoEnlace) {
+        PantallaEdicionEnlaceCompleta(
+            enlaceInicial = enlaceEnEdicion,
+            onVolver = {
+                enlaceEnEdicion = null
+                esNuevoEnlace = false
+            },
+            onGuardar = { enlaceGuardado ->
+                if (esNuevoEnlace) {
+                    listaEnlaces.add(0, enlaceGuardado)
+                } else {
+                    val index = listaEnlaces.indexOfFirst { it.id == enlaceGuardado.id }
+                    if (index != -1) listaEnlaces[index] = enlaceGuardado
+                }
+                onCambio()
+                enlaceEnEdicion = null
+                esNuevoEnlace = false
+            },
+            onEliminar = {
+                enlaceEnEdicion?.let { e -> listaEnlaces.removeAll { it.id == e.id } }
+                onCambio()
+                enlaceEnEdicion = null
+                esNuevoEnlace = false
+            }
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Biblioteca de Fuentes") },
+                    navigationIcon = {
+                        IconButton(onClick = onOpenDrawer) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menú")
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { esNuevoEnlace = true },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Agregar Enlace")
+                }
+            }
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(listaEnlaces) { enlace ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                try {
+                                    uriHandler.openUri(enlace.url)
+                                } catch (e: Exception) {
+                                    // Evita cierres si la URL no es válida
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = enlace.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(text = enlace.descripcion, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = enlace.url, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                            }
+                            IconButton(onClick = { enlaceEnEdicion = enlace }) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Editar Fuente",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PantallaEdicionEnlaceCompleta(
+    enlaceInicial: EnlaceModelo?,
+    onVolver: () -> Unit,
+    onGuardar: (EnlaceModelo) -> Unit,
+    onEliminar: () -> Unit
+) {
+    var titulo by remember { mutableStateOf(enlaceInicial?.titulo ?: "") }
+    var url by remember { mutableStateOf(enlaceInicial?.url ?: "") }
+    var descripcion by remember { mutableStateOf(enlaceInicial?.descripcion ?: "") }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Biblioteca de Fuentes") },
+                title = { Text(if (enlaceInicial == null) "Nueva Fuente" else "Editar Fuente") },
                 navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menú")
+                    IconButton(onClick = onVolver) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
                     }
-                }
+                },
+                actions = {
+                    if (enlaceInicial != null) {
+                        IconButton(onClick = onEliminar) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar Fuente", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+                            if (titulo.isNotBlank() && url.isNotBlank()) {
+                                onGuardar(
+                                    EnlaceModelo(
+                                        id = enlaceInicial?.id ?: System.currentTimeMillis().toString(),
+                                        titulo = titulo,
+                                        url = url,
+                                        descripcion = descripcion
+                                    )
+                                )
+                            } else {
+                                onVolver()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = "Guardar")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { mostrarDialogoCrear = true },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar Enlace")
-            }
-        }
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(16.dp)
         ) {
-            items(listaEnlaces) { enlace ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable {
-                            try {
-                                uriHandler.openUri(enlace.url)
-                            } catch (e: Exception) {
-                                // Evita cierres si la URL no es válida
-                            }
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = enlace.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(text = enlace.descripcion, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = enlace.url, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-            }
+            OutlinedTextField(
+                value = titulo,
+                onValueChange = { titulo = it },
+                label = { Text("Nombre de la fuente") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text("URL (https://...)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = descripcion,
+                onValueChange = { descripcion = it },
+                label = { Text("Descripción corta") },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
-
-    if (mostrarDialogoCrear) {
-        DialogoEnlace(
-            onDismiss = { mostrarDialogoCrear = false },
-            onGuardar = { nuevo ->
-                listaEnlaces.add(0, nuevo)
-                mostrarDialogoCrear = false
-            }
-        )
-    }
-}
-
-@Composable
-private fun DialogoEnlace(
-    onDismiss: () -> Unit,
-    onGuardar: (EnlaceModelo) -> Unit
-) {
-    var titulo by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Agregar Nueva Fuente") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
-                    label = { Text("Nombre de la fuente") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text("URL (https://...)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
-                    label = { Text("Descripción corta") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (titulo.isNotBlank() && url.isNotBlank()) {
-                        onGuardar(
-                            EnlaceModelo(
-                                id = System.currentTimeMillis().toString(),
-                                titulo = titulo,
-                                url = url,
-                                descripcion = descripcion
-                            )
-                        )
-                    }
-                }
-            ) {
-                Text("Guardar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
