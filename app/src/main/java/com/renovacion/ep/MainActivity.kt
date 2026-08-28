@@ -227,25 +227,93 @@ private fun AppConMenuLateral(
         prefs.edit().putBoolean("pref_vista_previa", nuevaPrevia).apply()
     }
 
+    // --- NOTAS: ahora se cargan desde el teléfono (SharedPreferences) ---
     val listaNotas = remember {
-        mutableStateListOf(
-            NotaKeepModelo("1", "Mateo 24:36", "Pero del día y la hora nadie sabe, ni aun los ángeles de los cielos, sino sólo mi Padre."),
-            NotaKeepModelo("2", "Idea de Estudio", "Revisar los términos en griego para 'Parusía' en las notas de consulta."),
-            NotaKeepModelo("3", "Juan 1:1", "En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios."),
-            NotaKeepModelo("4", "Génesis 1:1", "En el principio creó Dios los cielos y la tierra."),
-            NotaKeepModelo("5", "Recordatorio", "Agregar referencias faltantes del manuscrito Masorético.")
-        )
+        val notasGuardadas = mutableStateListOf<NotaKeepModelo>()
+        val json = prefs.getString("notas_json", null)
+        if (json != null) {
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                notasGuardadas.add(
+                    NotaKeepModelo(
+                        id = obj.getString("id"),
+                        titulo = obj.getString("titulo"),
+                        contenido = obj.getString("contenido")
+                    )
+                )
+            }
+        } else {
+            notasGuardadas.addAll(
+                listOf(
+                    NotaKeepModelo("1", "Mateo 24:36", "Pero del día y la hora nadie sabe, ni aun los ángeles de los cielos, sino sólo mi Padre."),
+                    NotaKeepModelo("2", "Idea de Estudio", "Revisar los términos en griego para 'Parusía' en las notas de consulta."),
+                    NotaKeepModelo("3", "Juan 1:1", "En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios."),
+                    NotaKeepModelo("4", "Génesis 1:1", "En el principio creó Dios los cielos y la tierra."),
+                    NotaKeepModelo("5", "Recordatorio", "Agregar referencias faltantes del manuscrito Masorético.")
+                )
+            )
+        }
+        notasGuardadas
     }
 
+    fun guardarNotas() {
+        val array = JSONArray()
+        listaNotas.forEach { n ->
+            val obj = JSONObject()
+            obj.put("id", n.id)
+            obj.put("titulo", n.titulo)
+            obj.put("contenido", n.contenido)
+            array.put(obj)
+        }
+        prefs.edit().putString("notas_json", array.toString()).apply()
+    }
+    // --- FIN cambios de Notas ---
+
+    // --- CONSULTA GLOBAL: ahora se carga desde el teléfono (SharedPreferences) ---
     val listaConsultas = remember {
-        mutableStateListOf(
-            ConsultaModelo("1", "Parusía (παρουσία)", "Mateo 24:3", "Presencia, advenimiento o llegada de una personalidad ilustre o divina."),
-            ConsultaModelo("2", "Logos (λόγος)", "Juan 1:1", "Palabra, expresión, discurso o razón divina encarnada."),
-            ConsultaModelo("3", "Kenosis (κένωσις)", "Filipenses 2:7", "El acto de despojarse o vaciarse a sí mismo voluntariamente.")
-        )
+        val consultasGuardadas = mutableStateListOf<ConsultaModelo>()
+        val json = prefs.getString("consultas_json", null)
+        if (json != null) {
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                consultasGuardadas.add(
+                    ConsultaModelo(
+                        id = obj.getString("id"),
+                        termino = obj.getString("termino"),
+                        pasajeReferencia = obj.getString("pasajeReferencia"),
+                        definicion = obj.getString("definicion")
+                    )
+                )
+            }
+        } else {
+            consultasGuardadas.addAll(
+                listOf(
+                    ConsultaModelo("1", "Parusía (παρουσία)", "Mateo 24:3", "Presencia, advenimiento o llegada de una personalidad ilustre o divina."),
+                    ConsultaModelo("2", "Logos (λόγος)", "Juan 1:1", "Palabra, expresión, discurso o razón divina encarnada."),
+                    ConsultaModelo("3", "Kenosis (κένωσις)", "Filipenses 2:7", "El acto de despojarse o vaciarse a sí mismo voluntariamente.")
+                )
+            )
+        }
+        consultasGuardadas
     }
 
-    // --- FUENTES: ahora se cargan desde el teléfono (SharedPreferences) ---
+    fun guardarConsultas() {
+        val array = JSONArray()
+        listaConsultas.forEach { c ->
+            val obj = JSONObject()
+            obj.put("id", c.id)
+            obj.put("termino", c.termino)
+            obj.put("pasajeReferencia", c.pasajeReferencia)
+            obj.put("definicion", c.definicion)
+            array.put(obj)
+        }
+        prefs.edit().putString("consultas_json", array.toString()).apply()
+    }
+    // --- FIN cambios de Consulta Global ---
+
+    // --- FUENTES: se cargan desde el teléfono (SharedPreferences) ---
     val listaEnlaces = remember {
         val enlacesGuardados = mutableStateListOf<EnlaceModelo>()
         val json = prefs.getString("enlaces_json", null)
@@ -292,7 +360,7 @@ private fun AppConMenuLateral(
     }
     // --- FIN cambios de Fuentes ---
 
-    // --- MARCADORES: ahora se cargan desde el teléfono (SharedPreferences) ---
+    // --- MARCADORES: se cargan desde el teléfono (SharedPreferences) ---
     val listaMarcadores = remember {
         val marcadoresGuardados = mutableStateListOf<MarcadorModelo>()
         val json = prefs.getString("marcadores_json", null)
@@ -353,11 +421,13 @@ private fun AppConMenuLateral(
                     val index = listaNotas.indexOfFirst { it.id == notaGuardada.id }
                     if (index != -1) listaNotas[index] = notaGuardada
                 }
+                guardarNotas()
                 notaEnEdicion = null
                 esNuevaNota = false
             },
             onEliminar = {
                 notaEnEdicion?.let { n -> listaNotas.removeAll { it.id == n.id } }
+                guardarNotas()
                 notaEnEdicion = null
                 esNuevaNota = false
             }
@@ -376,11 +446,13 @@ private fun AppConMenuLateral(
                     val index = listaConsultas.indexOfFirst { it.id == consultaGuardada.id }
                     if (index != -1) listaConsultas[index] = consultaGuardada
                 }
+                guardarConsultas()
                 consultaEnEdicion = null
                 esNuevaConsulta = false
             },
             onEliminar = {
                 consultaEnEdicion?.let { c -> listaConsultas.removeAll { it.id == c.id } }
+                guardarConsultas()
                 consultaEnEdicion = null
                 esNuevaConsulta = false
             }
