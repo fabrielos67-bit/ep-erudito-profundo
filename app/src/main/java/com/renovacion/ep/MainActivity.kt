@@ -1305,6 +1305,7 @@ private fun PantallaEdicionMarcador(
                 value = pasaje,
                 onValueChange = { pasaje = it },
                 label = { Text("Pasaje bíblico (Ej. Juan 3:16)") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -1315,6 +1316,7 @@ private fun PantallaEdicionMarcador(
                 value = nota,
                 onValueChange = { nota = it },
                 label = { Text("Nota de estudio o comentario") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
