@@ -917,6 +917,7 @@ private fun PantallaEdicionConsultaCompleta(
                 value = termino,
                 onValueChange = { termino = it },
                 label = { Text("Término o Palabra Clave (Ej. Logos)") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -937,6 +938,7 @@ private fun PantallaEdicionConsultaCompleta(
                 value = definicion,
                 onValueChange = { definicion = it },
                 label = { Text("Definición, Notas Lingüísticas o Análisis Teológico") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
