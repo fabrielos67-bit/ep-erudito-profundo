@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -709,6 +711,7 @@ private fun PantallaEdicionNotaCompleta(
                 value = titulo,
                 onValueChange = { titulo = it },
                 placeholder = { Text("Título", fontSize = 22.sp, fontWeight = FontWeight.Bold) },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -729,6 +732,7 @@ private fun PantallaEdicionNotaCompleta(
                 value = contenido,
                 onValueChange = { contenido = it },
                 placeholder = { Text("Escribe una nota...", fontSize = 16.sp) },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
