@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -439,25 +440,25 @@ private fun AppConMenuLateral(
         PantallaEdicionConsultaCompleta(
             consultaInicial = consultaEnEdicion,
             onVolver = {
-                idMarcadorEnEdicion = null
-                esNuevoMarcador = false
+                consultaEnEdicion = null
+                esNuevaConsulta = false
             },
-            onGuardar = { marcadorGuardado ->
-                if (esNuevoMarcador) {
-                    listaMarcadores.add(0, marcadorGuardado)
+            onGuardar = { consultaGuardada ->
+                if (esNuevaConsulta) {
+                    listaConsultas.add(0, consultaGuardada)
                 } else {
-                    val index = listaMarcadores.indexOfFirst { it.id == marcadorGuardado.id }
-                    if (index != -1) listaMarcadores[index] = marcadorGuardado
+                    val index = listaConsultas.indexOfFirst { it.id == consultaGuardada.id }
+                    if (index != -1) listaConsultas[index] = consultaGuardada
                 }
-                onCambio()
-                idMarcadorEnEdicion = null
-                esNuevoMarcador = false
+                guardarConsultas()
+                consultaEnEdicion = null
+                esNuevaConsulta = false
             },
             onEliminar = {
-                marcadorEnEdicion?.let { m -> listaMarcadores.removeAll { it.id == m.id } }
-                onCambio()
-                idMarcadorEnEdicion = null
-                esNuevoMarcador = false
+                consultaEnEdicion?.let { c -> listaConsultas.removeAll { it.id == c.id } }
+                guardarConsultas()
+                consultaEnEdicion = null
+                esNuevaConsulta = false
             }
         )
     } else {
@@ -1148,14 +1149,15 @@ private fun PantallaMarcadores(
     onOpenDrawer: () -> Unit,
     onCambio: () -> Unit
 ) {
-    var marcadorEnEdicion by remember { mutableStateOf<MarcadorModelo?>(null) }
-    var esNuevoMarcador by remember { mutableStateOf(false) }
+    var idMarcadorEnEdicion by rememberSaveable { mutableStateOf<String?>(null) }
+    var esNuevoMarcador by rememberSaveable { mutableStateOf(false) }
+    val marcadorEnEdicion = listaMarcadores.find { it.id == idMarcadorEnEdicion }
 
     if (marcadorEnEdicion != null || esNuevoMarcador) {
         PantallaEdicionMarcador(
             marcadorInicial = marcadorEnEdicion,
             onVolver = {
-                marcadorEnEdicion = null
+                idMarcadorEnEdicion = null
                 esNuevoMarcador = false
             },
             onGuardar = { marcadorGuardado ->
@@ -1166,13 +1168,13 @@ private fun PantallaMarcadores(
                     if (index != -1) listaMarcadores[index] = marcadorGuardado
                 }
                 onCambio()
-                marcadorEnEdicion = null
+                idMarcadorEnEdicion = null
                 esNuevoMarcador = false
             },
             onEliminar = {
                 marcadorEnEdicion?.let { m -> listaMarcadores.removeAll { it.id == m.id } }
                 onCambio()
-                marcadorEnEdicion = null
+                idMarcadorEnEdicion = null
                 esNuevoMarcador = false
             }
         )
@@ -1223,13 +1225,21 @@ private fun PantallaMarcadores(
                                 modifier = Modifier.padding(end = 16.dp)
                             )
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = marcador.pasaje, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(
+                                    text = marcador.pasaje,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                                 if (marcador.nota.isNotBlank()) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = marcador.nota,
                                         fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
