@@ -439,25 +439,25 @@ private fun AppConMenuLateral(
         PantallaEdicionConsultaCompleta(
             consultaInicial = consultaEnEdicion,
             onVolver = {
-                consultaEnEdicion = null
-                esNuevaConsulta = false
+                idMarcadorEnEdicion = null
+                esNuevoMarcador = false
             },
-            onGuardar = { consultaGuardada ->
-                if (esNuevaConsulta) {
-                    listaConsultas.add(0, consultaGuardada)
+            onGuardar = { marcadorGuardado ->
+                if (esNuevoMarcador) {
+                    listaMarcadores.add(0, marcadorGuardado)
                 } else {
-                    val index = listaConsultas.indexOfFirst { it.id == consultaGuardada.id }
-                    if (index != -1) listaConsultas[index] = consultaGuardada
+                    val index = listaMarcadores.indexOfFirst { it.id == marcadorGuardado.id }
+                    if (index != -1) listaMarcadores[index] = marcadorGuardado
                 }
-                guardarConsultas()
-                consultaEnEdicion = null
-                esNuevaConsulta = false
+                onCambio()
+                idMarcadorEnEdicion = null
+                esNuevoMarcador = false
             },
             onEliminar = {
-                consultaEnEdicion?.let { c -> listaConsultas.removeAll { it.id == c.id } }
-                guardarConsultas()
-                consultaEnEdicion = null
-                esNuevaConsulta = false
+                marcadorEnEdicion?.let { m -> listaMarcadores.removeAll { it.id == m.id } }
+                onCambio()
+                idMarcadorEnEdicion = null
+                esNuevoMarcador = false
             }
         )
     } else {
@@ -1210,7 +1210,7 @@ private fun PantallaMarcadores(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable { marcadorEnEdicion = marcador }
+                            .clickable { idMarcadorEnEdicion = marcador.id }
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -1255,8 +1255,8 @@ private fun PantallaEdicionMarcador(
     onGuardar: (MarcadorModelo) -> Unit,
     onEliminar: () -> Unit
 ) {
-    var pasaje by remember { mutableStateOf(marcadorInicial?.pasaje ?: "") }
-    var nota by remember { mutableStateOf(marcadorInicial?.nota ?: "") }
+    var pasaje by rememberSaveable { mutableStateOf(marcadorInicial?.pasaje ?: "") }
+    var nota by rememberSaveable { mutableStateOf(marcadorInicial?.nota ?: "") }
 
     Scaffold(
         topBar = {
